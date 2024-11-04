@@ -3,16 +3,22 @@ import System.IO
 import Distribution.PackageDescription (Executable(Executable))
 import System.Environment
 
+import Lexer
+
 showUsage :: IO ()
 showUsage = do
-    path <- getExecutablePath;
+    path <- getProgName;
     putStrLn (unwords ["Usage:", path, "<expression>"])
+
+solve :: String -> IO()
+solve expression = do
+  let tokens = lexer expression
+  print tokens
 
 main :: IO ()
 main = do
-    args <- getArgs;
-    case args of
-        [expression] -> do
-            putStrLn "ok"
-        _ -> showUsage
+  args <- getArgs;
+  case args of
+    [expression]  -> solve expression
+    _             -> showUsage
 

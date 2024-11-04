@@ -1,13 +1,15 @@
-GHC 		:= ghc
-GHC_FLAGS	:= -c
-
 SRC_DIR		:= srcs
 OBJ_DIR		:= objs
-FILES		:= main.hs\
+FILES		:=	main.hs\
+				Lexer.hs\
+				Parser.hs\
 
 SRCS		:=	$(FILES:%.hs=$(SRC_DIR)/%.hs)
 OBJS		:=	$(FILES:%.hs=$(OBJ_DIR)/%.o)
 NAME		:= computor
+
+GHC 		:= ghc
+GHC_FLAGS	:= -c -i$(SRC_DIR)
 
 .PHONY:		all
 all:		$(NAME)
