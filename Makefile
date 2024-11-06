@@ -1,8 +1,8 @@
 SRC_DIR		:= srcs
 OBJ_DIR		:= objs
-FILES		:=	main.hs\
+FILES		:=\
 				Lexer.hs\
-				Parser.hs\
+				main.hs\
 
 SRCS		:=	$(FILES:%.hs=$(SRC_DIR)/%.hs)
 OBJS		:=	$(FILES:%.hs=$(OBJ_DIR)/%.o)

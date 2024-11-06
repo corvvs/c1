@@ -14,6 +14,8 @@ solve :: String -> IO()
 solve expression = do
   let tokens = lexer expression
   print tokens
+  let equation = parseEquation tokens
+  print equation
 
 main :: IO ()
 main = do
