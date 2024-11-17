@@ -1,4 +1,4 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, polynomialSignature, transformToStandard, isSolvable) where
+module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
 
 import AST (AST (..))
 import Data.ByteString qualified as List
@@ -168,27 +168,24 @@ transformToStandard
     where
       r = mul (transformToStandard a) (transformToStandard b)
 
+type PolynomialInfo = (Set.Set String, Int)
+
+inspectPolynomialInfo :: Polynomial -> PolynomialInfo
+inspectPolynomialInfo p = (varSet, degree)
+  where
+    varSet = polynomialVarSet p
+    degree = degreeOfPolynomial p
+
 -- 多項式がサポート範囲内かどうかを判定する. つまり:
 -- - 文字1種類以下
 -- - 次数2以下
-isSolvable :: Polynomial -> (Bool, String)
-isSolvable p = result
-  where
-    (fVarSet, rVarSet) = isSolvableVar p
-    (fDegree, rDegree) = isSolvableDegree p
-    result = case (fVarSet, fDegree) of
-      (True, True) -> (True, "It is Solvable.")
-      (False, _) -> (False, rVarSet)
-      (_, False) -> (False, rDegree)
-
-isSolvableVar :: Polynomial -> (Bool, String)
-isSolvableVar p = result
-  where
-    varSet = polynomialVarSet p
-    result = case Set.size varSet of
-      0 -> (False, "It is Constant.")
-      1 -> (True, "It is Solvable.")
-      _ -> (False, "Variable is too many.")
+isSolvable :: PolynomialInfo -> (Bool, String)
+isSolvable (s, d)
+  | Set.size s == 0 = (False, "It is not a equation")
+  | Set.size s > 1 = (False, "Too many variables")
+  | d == 0 = (False, "It is not a equstion")
+  | d > 2 = (False, "Too large dimension")
+  | otherwise = (True, "ok")
 
 -- 多項式の変数集合を返す
 -- -> すべての項の変数集合の和集合
@@ -198,15 +195,6 @@ polynomialVarSet p = Set.unions (map (\(k, t) -> termVarSet t) (Map.toList p))
 -- 項の変数集合を返す
 termVarSet :: PolynomialTerm -> Set.Set String
 termVarSet (PolynomialTerm _ var) = Map.keysSet var
-
-isSolvableDegree :: Polynomial -> (Bool, String)
-isSolvableDegree p = result
-  where
-    degree = degreeOfPolynomial p
-    result = case degree of
-      0 -> (False, "It is Constant.")
-      n | n <= 2 -> (True, "It is Solvable.")
-      _ -> (False, "Degree is too large.")
 
 -- 多項式の次数を返す
 degreeOfPolynomial :: Polynomial -> Int

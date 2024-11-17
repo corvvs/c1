@@ -7,6 +7,7 @@ FILES		:=\
 				Parser.hs\
 				Polynomial.hs\
 				Algebra.hs\
+				Solver.hs\
 				main.hs\
 
 SRCS		:=	$(FILES:%.hs=$(SRC_DIR)/%.hs)

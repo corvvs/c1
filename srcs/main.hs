@@ -1,10 +1,12 @@
 import Algebra
 import Data.ByteString qualified as BS
+import Data.List qualified as List
+import Data.Set qualified as Set
 import Debug.Trace (trace)
-import Distribution.PackageDescription (Executable (Executable))
 import Lexer
 import Parser
 import Polynomial
+import Solver
 import System.Environment
 import System.IO
 
@@ -25,9 +27,15 @@ solve :: String -> IO ()
 solve expression = do
   let polynomial = getPolynomial expression
   putStrLn (polynomialSignature polynomial ++ " = 0")
-  let (solvable, reason) = isSolvable polynomial
+  let pInfo = inspectPolynomialInfo polynomial
+  let (varSet, degree) = pInfo
+  putStrLn ("Variables: [" ++ List.intercalate ", " (Set.toList varSet) ++ "]")
+  putStrLn ("Polynomial degree: " ++ show degree)
+  let (solvable, reason) = isSolvable pInfo
   if solvable
-    then putStrLn "This equation is solvable."
+    then do
+        putStrLn "This equation is solvable."
+        solveEquation polynomial
     else putStrLn ("This equation is not solvable. (" ++ reason ++ ")")
 
 main :: IO ()
