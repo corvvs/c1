@@ -181,24 +181,25 @@ inspectPolynomialInfo p = (varSet, degree)
 -- - 次数2以下
 isSolvable :: PolynomialInfo -> (Bool, String)
 isSolvable (s, d)
-  | Set.size s == 0 = (False, "It is not a equation")
   | Set.size s > 1 = (False, "Too many variables")
-  | d == 0 = (False, "It is not a equstion")
   | d > 2 = (False, "Too large dimension")
-  | otherwise = (True, "ok")
+  | otherwise = (True, "ok: This is a supported equation")
 
 -- 多項式の変数集合を返す
 -- -> すべての項の変数集合の和集合
 polynomialVarSet :: Polynomial -> Set.Set String
 polynomialVarSet p = Set.unions (map (\(k, t) -> termVarSet t) (Map.toList p))
-
--- 項の変数集合を返す
-termVarSet :: PolynomialTerm -> Set.Set String
-termVarSet (PolynomialTerm _ var) = Map.keysSet var
+  where
+    -- 項の変数集合を返す
+    termVarSet :: PolynomialTerm -> Set.Set String
+    termVarSet (PolynomialTerm _ var) = Map.keysSet var
 
 -- 多項式の次数を返す
 degreeOfPolynomial :: Polynomial -> Int
-degreeOfPolynomial p = maximum (map degreeOfTerm (Map.elems p))
+degreeOfPolynomial p =
+  if Map.null p
+    then 0
+    else maximum (map degreeOfTerm (Map.elems p))
 
 -- 項の次数を返す
 degreeOfTerm :: PolynomialTerm -> Int

@@ -18,9 +18,14 @@ solveEquation p = do
   let c = findTerm p 0
   putStrLn ("(a, b, c) = (" ++ show a ++ ", " ++ show b ++ ", " ++ show c ++ ")")
   case (a, b, c) of
-    (0, 0, _) -> error "This is not a polynomial equation."
+    (0, 0, _) -> solveEquation0 c
     (0, _, _) -> solveEquation1 b c
     (_, _, _) -> solveEquation2 a b c
+
+-- "0次方程式" c = 0 を解く
+solveEquation0 :: Double -> IO()
+solveEquation0 0 = putStrLn "Solution is: ARBITRARY REAL NUMBER"
+solveEquation0 _ = putStrLn "Solution is: NONE"
 
 -- 1次方程式 bx + c = 0 を解く -> x = -c / b
 solveEquation1 :: Double -> Double -> IO()
