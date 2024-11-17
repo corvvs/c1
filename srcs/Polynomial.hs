@@ -1,10 +1,11 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, polynomialSignature, transformoToStandard) where
+module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, polynomialSignature, transformToStandard, isSolvable) where
 
 import AST (AST (..))
 import Data.ByteString qualified as List
 import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (fromJust)
+import Data.Set qualified as Set
 import Debug.Trace (trace)
 import TypeClass (Addable (..), Multipliable (..), Subtractable (..))
 
@@ -40,15 +41,13 @@ polynomialTermByVar (Var n e) = PolynomialTerm 1 (Map.singleton n e)
 
 polynomialTermCoefficientSignature :: PolynomialTerm -> String
 polynomialTermCoefficientSignature (PolynomialTerm c _) = case c of
-  0 -> ""
   c | c > 0 -> "+ " ++ show (abs c)
   c | c < 0 -> "- " ++ show (abs c)
+  _ -> ""
 
 polynomialTermSignature :: PolynomialTerm -> String
 polynomialTermSignature (PolynomialTerm 0 var) = ""
-polynomialTermSignature (PolynomialTerm _ var) = trace ("[polynomialTermSignature] " ++ show var ++ "->[" ++ s ++ "]") s
-  where
-    s = polynomialVarSignature var
+polynomialTermSignature (PolynomialTerm _ var) = polynomialVarSignature var
 
 polynomialTermPrint :: PolynomialTerm -> String
 polynomialTermPrint (PolynomialTerm c var) = case c of
@@ -102,22 +101,19 @@ reducePolynomial = Map.filter (\(PolynomialTerm c _) -> c /= 0)
 
 -- 1つの項を多項式に掛けた結果を返す
 mulTermPolynomial :: PolynomialTerm -> Polynomial -> Polynomial
-mulTermPolynomial s p = trace ("[mulTermPolynomial reduced] " ++ polynomialSignature reduced) reduced
+mulTermPolynomial s p = reduced
   where
     pairs = Map.toList p
-    muled = polynomialByTerms (map (\(k, t) -> trace ("[mulTermPolynomial] [" ++ k ++ "]") fromJust (mul s t)) pairs)
-    reduced = reducePolynomial (trace ("[mulTermPolynomial muled] " ++ polynomialSignature muled) muled)
+    muled = polynomialByTerms (map (\(k, t) -> fromJust (mul s t)) pairs)
+    reduced = reducePolynomial muled
 
 instance Addable Polynomial where
   add :: Polynomial -> Polynomial -> Maybe Polynomial
   add p1 p2 = Just (reducePolynomial united)
     where
       f :: PolynomialTerm -> PolynomialTerm -> PolynomialTerm
-      f t1 t2 = trace ("[poly add unionWith] " ++ polynomialTermPrint a) a
-        where
-          a = fromJust (add t1 t2)
-      united =
-        Map.unionWith f (trace ("[poly add p1]" ++ polynomialSignature p1) p1) (trace ("[poly add p2]" ++ polynomialSignature p2) p2)
+      f t1 t2 = fromJust (add t1 t2)
+      united = Map.unionWith f p1 p2
 
 instance Subtractable Polynomial where
   sub :: Polynomial -> Polynomial -> Maybe Polynomial
@@ -133,18 +129,12 @@ instance Multipliable Polynomial where
   mul :: Polynomial -> Polynomial -> Maybe Polynomial
   mul p1 p2 = just
     where
-      ts1 = Map.toList (trace ("mul p1: " ++ polynomialSignature p1 ++ " p2: " ++ polynomialSignature p2) p1)
+      ts1 = Map.toList p1
       f :: (String, PolynomialTerm) -> Polynomial -> Polynomial
       f (sig, term) ac = fromJust added
         where
           pp = mulTermPolynomial term p2
-          added =
-            add
-              ( trace
-                  ("mul ac: " ++ polynomialSignature ac)
-                  ac
-              )
-              (trace ("mul pp: " ++ polynomialSignature pp) pp)
+          added = add ac pp
       folded = foldr f zeroPolynomial ts1
       just = Just folded
 
@@ -158,23 +148,70 @@ polynomialByVar :: AST -> Polynomial
 polynomialByVar (Var n e) = Map.singleton (polynomialVarSignature' n e) (PolynomialTerm 1 (Map.singleton n e))
 
 polynomialSignature :: Polynomial -> String
--- polynomialSignature p = foldr (\(k, v) acc -> "key[" ++ k ++ "]:val[" ++ polynomialTermPrint v ++ "] " ++ acc) "" (Map.toList p)
 polynomialSignature p = foldr (\(k, v) acc -> polynomialTermPrint v ++ " " ++ acc) "" (Map.toList p)
 
-transformoToStandard :: AST -> Polynomial
-transformoToStandard (Num a) = polynomialByNum (Num a)
-transformoToStandard (Var n e) = polynomialByVar (Var n e)
-transformoToStandard
+transformToStandard :: AST -> Polynomial
+transformToStandard (Num a) = polynomialByNum (Num a)
+transformToStandard (Var n e) = polynomialByVar (Var n e)
+transformToStandard
   (Add a b) = fromJust added
     where
-      sa = transformoToStandard a
-      sb = transformoToStandard b
-      added = add (trace ("[transformoToStandard Add sa] " ++ polynomialSignature sa) sa) (trace ("[transformoToStandard Add sb] " ++ polynomialSignature sb) sb)
-transformoToStandard
+      sa = transformToStandard a
+      sb = transformToStandard b
+      added = add sa sb
+transformToStandard
   (Sub a b) = fromJust r
     where
-      r = sub (transformoToStandard a) (transformoToStandard b)
-transformoToStandard
+      r = sub (transformToStandard a) (transformToStandard b)
+transformToStandard
   (Mul a b) = fromJust r
     where
-      r = mul (transformoToStandard a) (transformoToStandard b)
+      r = mul (transformToStandard a) (transformToStandard b)
+
+-- 多項式がサポート範囲内かどうかを判定する. つまり:
+-- - 文字1種類以下
+-- - 次数2以下
+isSolvable :: Polynomial -> (Bool, String)
+isSolvable p = result
+  where
+    (fVarSet, rVarSet) = isSolvableVar p
+    (fDegree, rDegree) = isSolvableDegree p
+    result = case (fVarSet, fDegree) of
+      (True, True) -> (True, "It is Solvable.")
+      (False, _) -> (False, rVarSet)
+      (_, False) -> (False, rDegree)
+
+isSolvableVar :: Polynomial -> (Bool, String)
+isSolvableVar p = result
+  where
+    varSet = polynomialVarSet p
+    result = case Set.size varSet of
+      0 -> (False, "It is Constant.")
+      1 -> (True, "It is Solvable.")
+      _ -> (False, "Variable is too many.")
+
+-- 多項式の変数集合を返す
+-- -> すべての項の変数集合の和集合
+polynomialVarSet :: Polynomial -> Set.Set String
+polynomialVarSet p = Set.unions (map (\(k, t) -> termVarSet t) (Map.toList p))
+
+-- 項の変数集合を返す
+termVarSet :: PolynomialTerm -> Set.Set String
+termVarSet (PolynomialTerm _ var) = Map.keysSet var
+
+isSolvableDegree :: Polynomial -> (Bool, String)
+isSolvableDegree p = result
+  where
+    degree = degreeOfPolynomial p
+    result = case degree of
+      0 -> (False, "It is Constant.")
+      n | n <= 2 -> (True, "It is Solvable.")
+      _ -> (False, "Degree is too large.")
+
+-- 多項式の次数を返す
+degreeOfPolynomial :: Polynomial -> Int
+degreeOfPolynomial p = maximum (map degreeOfTerm (Map.elems p))
+
+-- 項の次数を返す
+degreeOfTerm :: PolynomialTerm -> Int
+degreeOfTerm (PolynomialTerm _ var) = sum (Map.elems var)

@@ -1,5 +1,6 @@
 import Algebra
 import Data.ByteString qualified as BS
+import Debug.Trace (trace)
 import Distribution.PackageDescription (Executable (Executable))
 import Lexer
 import Parser
@@ -12,16 +13,22 @@ showUsage = do
   path <- getProgName
   putStrLn (unwords ["Usage:", path, "<expression>"])
 
+getPolynomial :: String -> Polynomial
+getPolynomial expression = trace ("[standard] -> " ++ polynomialSignature standard) standard
+  where
+    tokens = lexer expression
+    equation = parseEquation tokens
+    (Equation lhs rhs) = reduceEquation (trace ("[parser] -> " ++ show equation) equation)
+    standard = transformToStandard (trace ("[reduce] -> " ++ show lhs ++ " = " ++ show rhs) lhs)
+
 solve :: String -> IO ()
 solve expression = do
-  let tokens = lexer expression
-  print ("[lexer] " ++ show expression ++ " -> " ++ show tokens)
-  let equation = parseEquation tokens
-  print ("[parser] -> " ++ show equation)
-  let (Equation lhs rhs) = reduceEquation equation
-  print ("[reduce] -> " ++ show lhs ++ " = " ++ show rhs)
-  let standard = transformoToStandard lhs
-  print ("[standard] -> " ++ polynomialSignature standard)
+  let polynomial = getPolynomial expression
+  putStrLn (polynomialSignature polynomial ++ " = 0")
+  let (solvable, reason) = isSolvable polynomial
+  if solvable
+    then putStrLn "This equation is solvable."
+    else putStrLn ("This equation is not solvable. (" ++ reason ++ ")")
 
 main :: IO ()
 main = do
