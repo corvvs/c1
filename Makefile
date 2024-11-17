@@ -1,7 +1,12 @@
 SRC_DIR		:= srcs
 OBJ_DIR		:= objs
 FILES		:=\
+				TypeClass.hs\
 				Lexer.hs\
+				AST.hs\
+				Parser.hs\
+				Polynomial.hs\
+				Algebra.hs\
 				main.hs\
 
 SRCS		:=	$(FILES:%.hs=$(SRC_DIR)/%.hs)
@@ -10,12 +15,13 @@ NAME		:= computor
 
 GHC 		:= ghc
 GHC_FLAGS	:= -c -i$(SRC_DIR)
+LD_FLAGS	:= -package containers
 
 .PHONY:		all
 all:		$(NAME)
 
 $(NAME):	$(OBJS)
-	$(GHC) -o $(NAME) $(OBJS)
+	$(GHC) $(LD_FLAGS) -o $(NAME) $(OBJS)
 
 $(OBJ_DIR)/%.o:	$(SRC_DIR)/%.hs
 	@mkdir -p $(OBJ_DIR)
