@@ -60,7 +60,7 @@ discriminant2 a b c = b ^ 2 - 4 * a * c
 
 -- 2次方程式の解(D > 0)
 solveEquation2Positive :: Double -> Double -> Double -> String
-solveEquation2Positive a b c = show x1 ++ show x2
+solveEquation2Positive a b c = show x1 ++ ", " ++ show x2
   where
     d = discriminant2 a b c
     x1 = (-b + sqrt d) / (2 * a)
@@ -74,10 +74,17 @@ solveEquation2Zero a b c =
 
 -- 2次方程式の解(D < 0)
 solveEquation2Negative :: Double -> Double -> Double -> String
-solveEquation2Negative a b c = x
+solveEquation2Negative a b c = pr ++ pi
   where
     d = discriminant2 a b c
     denominator = 2 * a
     real = -(b / denominator)
+    pr =
+      if real == 0
+        then ""
+        else show real ++ " "
     imaginary = sqrt (-d) / denominator
-    x = show real ++ " +/- " ++ show imaginary ++ "i"
+    pi =
+      if imaginary >= 0
+        then "+/- " ++ show imaginary ++ "i"
+        else "-/+ " ++ show (abs imaginary) ++ "i"
