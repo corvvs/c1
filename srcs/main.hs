@@ -20,7 +20,7 @@ printEquation (Equation lhs rhs) = do
 
 solve :: String -> IO ()
 solve expression = do
-  let tokens = lexer expression
+  let (_, tokens) = lexer 0 expression
   MyPrint.printLine "Tokens" $ show tokens
 
   let equation = parseEquation tokens
