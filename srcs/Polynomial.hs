@@ -51,13 +51,19 @@ polynomialTermSignature (PolynomialTerm 0 var) = ""
 polynomialTermSignature (PolynomialTerm _ var) = polynomialVarSignature var
 
 polynomialTermPrint :: Int -> PolynomialTerm -> String
-polynomialTermPrint index (PolynomialTerm c var) = coefficient ++ variable
+polynomialTermPrint index term = case term of
+  PolynomialTerm 0 _ -> ""
+  _ | degreeOfTerm term == 0 -> coefficient
+  PolynomialTerm c _ | abs c == 1 -> coefficient ++ variable
+  _ -> coefficient ++ "*" ++ variable
   where
+    PolynomialTerm c var = term
     -- 前提: c /= 0
     sign
-      | c > 0 = if index == 0
-          then ""
-          else "+ "
+      | c > 0 =
+          if index == 0
+            then ""
+            else "+ "
       | otherwise = "- "
     coefficient
       | not (Map.null var) && (abs c == 1) = sign
@@ -164,10 +170,7 @@ printPolynomial p = case p of
   p | Map.null p -> "0"
   _ -> unwords indexedTerms
     where
-      indexedTerms = zipWith polynomialTermPrint [0..] (Map.elems p)
-
-
-
+      indexedTerms = zipWith polynomialTermPrint [0 ..] (Map.elems p)
 
 transformToStandard :: AST -> Polynomial
 transformToStandard (Num a) = polynomialByNum (Num a)
