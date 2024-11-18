@@ -1,7 +1,6 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
+module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
 
 import AST (AST (..))
-import Data.ByteString qualified as List
 import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (fromJust)
@@ -25,8 +24,10 @@ polynomialVarSignature var = joined
       _ -> foldr1 (\a b -> a ++ " " ++ b) signatures
 
 polynomialVarSignature' :: String -> Int -> String
-polynomialVarSignature' g 0 = ""
-polynomialVarSignature' g d = g ++ "^" ++ show d
+polynomialVarSignature' g d = case d of
+  0 -> ""
+  1 -> g
+  _ -> g ++ "^" ++ show d
 
 -- 項
 data PolynomialTerm = PolynomialTerm Double PolynomialVariable
@@ -49,11 +50,19 @@ polynomialTermSignature :: PolynomialTerm -> String
 polynomialTermSignature (PolynomialTerm 0 var) = ""
 polynomialTermSignature (PolynomialTerm _ var) = polynomialVarSignature var
 
-polynomialTermPrint :: PolynomialTerm -> String
-polynomialTermPrint (PolynomialTerm c var) = case c of
-  c | c > 0 -> "+ " ++ show (abs c) ++ polynomialVarSignature var
-  c | c < 0 -> "- " ++ show (abs c) ++ polynomialVarSignature var
-  _ -> ""
+polynomialTermPrint :: Int -> PolynomialTerm -> String
+polynomialTermPrint index (PolynomialTerm c var) = coefficient ++ variable
+  where
+    -- 前提: c /= 0
+    sign
+      | c > 0 = if index == 0
+          then ""
+          else "+ "
+      | otherwise = "- "
+    coefficient
+      | not (Map.null var) && (abs c == 1) = sign
+      | otherwise = sign ++ show (abs c)
+    variable = polynomialVarSignature var
 
 -- 項同士の和
 instance Addable PolynomialTerm where
@@ -148,7 +157,17 @@ polynomialByVar :: AST -> Polynomial
 polynomialByVar (Var n e) = Map.singleton (polynomialVarSignature' n e) (PolynomialTerm 1 (Map.singleton n e))
 
 polynomialSignature :: Polynomial -> String
-polynomialSignature p = foldr (\(k, v) acc -> polynomialTermPrint v ++ " " ++ acc) "" (Map.toList p)
+polynomialSignature p = foldr (\(k, v) acc -> polynomialTermSignature v ++ " " ++ acc) "" (Map.toList p)
+
+printPolynomial :: Polynomial -> String
+printPolynomial p = case p of
+  p | Map.null p -> "0"
+  _ -> unwords indexedTerms
+    where
+      indexedTerms = zipWith polynomialTermPrint [0..] (Map.elems p)
+
+
+
 
 transformToStandard :: AST -> Polynomial
 transformToStandard (Num a) = polynomialByNum (Num a)

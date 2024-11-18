@@ -4,7 +4,6 @@ import AST (AST (..), makeMul, reduceMulDiv)
 import Data.List (groupBy)
 import Data.Map (Map, empty, fromList)
 import Debug.Trace (trace)
-import Language.Haskell.TH (Type (EqualityT))
 import Parser (AST (..), Equation (..))
 import Polynomial (Polynomial, PolynomialTerm (..))
 

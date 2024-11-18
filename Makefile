@@ -2,6 +2,7 @@ SRC_DIR		:= srcs
 OBJ_DIR		:= objs
 FILES		:=\
 				TypeClass.hs\
+				MyPrint.hs\
 				Lexer.hs\
 				AST.hs\
 				Parser.hs\
@@ -15,7 +16,7 @@ OBJS		:=	$(FILES:%.hs=$(OBJ_DIR)/%.o)
 NAME		:= computor
 
 GHC 		:= ghc
-GHC_FLAGS	:= -c -i$(SRC_DIR)
+GHC_FLAGS	:= -c -i$(SRC_DIR) -package containers
 LD_FLAGS	:= -package containers
 
 .PHONY:		all
