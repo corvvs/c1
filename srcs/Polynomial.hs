@@ -157,6 +157,7 @@ polynomialByTerms :: [PolynomialTerm] -> Polynomial
 polynomialByTerms ts = Map.fromList (map (\t -> (polynomialTermSignature t, t)) ts)
 
 polynomialByNum :: AST -> Polynomial
+polynomialByNum (Num 0) = zeroPolynomial
 polynomialByNum (Num a) = Map.singleton "" (PolynomialTerm a Map.empty)
 
 polynomialByVar :: AST -> Polynomial
