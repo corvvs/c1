@@ -1,5 +1,6 @@
-module MyPrint(printLine) where
+module MyPrint (printLine) where
+
 import Text.Printf
 
 printLine :: String -> String -> IO ()
-printLine = printf "[%-15s] %s\n"
+printLine = printf "[%-12s] %s\n"

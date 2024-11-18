@@ -12,6 +12,12 @@ showUsage = do
   path <- getProgName
   putStrLn (unwords ["Usage:", path, "<expression>"])
 
+printEquation :: Equation -> IO ()
+printEquation (Equation lhs rhs) = do
+  let pl = transformToStandard lhs
+  let pr = transformToStandard rhs
+  MyPrint.printLine "Raw form" $ printPolynomial pl ++ " = " ++ printPolynomial pr
+
 solve :: String -> IO ()
 solve expression = do
   let tokens = lexer expression
@@ -19,6 +25,7 @@ solve expression = do
 
   let equation = parseEquation tokens
   MyPrint.printLine "AST" $ show equation
+  printEquation equation
 
   let (Equation lhsAst rhsAst) = reduceEquation equation
   let polynomial = transformToStandard lhsAst
