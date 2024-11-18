@@ -6,6 +6,7 @@ import Data.Map qualified as Map
 import Data.Maybe (fromJust)
 import Data.Set qualified as Set
 import Debug.Trace (trace)
+import MyPrint (showNumber)
 import TypeClass (Addable (..), Multipliable (..), Subtractable (..))
 
 -- 変数
@@ -42,8 +43,7 @@ polynomialTermByVar (Var n e) = PolynomialTerm 1 (Map.singleton n e)
 
 polynomialTermCoefficientSignature :: PolynomialTerm -> String
 polynomialTermCoefficientSignature (PolynomialTerm c _) = case c of
-  c | c > 0 -> "+ " ++ show (abs c)
-  c | c < 0 -> "- " ++ show (abs c)
+  c | c /= 0 -> showNumber c
   _ -> ""
 
 polynomialTermSignature :: PolynomialTerm -> String

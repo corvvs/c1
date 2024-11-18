@@ -3,6 +3,7 @@ module Solver (solveEquation) where
 import Data.List qualified as List
 import Data.Map qualified as Map
 import MyPrint
+import MyPrint qualified
 import Polynomial
 
 -- 仮定: 多項式は1変数であること
@@ -31,11 +32,9 @@ solveEquation0 _ = MyPrint.printLine "Solutions" "NONE"
 
 -- 1次方程式 bx + c = 0 を解く -> x = -c / b
 solveEquation1 :: Double -> Double -> IO ()
-solveEquation1 b 0 = do
-  MyPrint.printLine "Solutions" $ show 0.0
 solveEquation1 b c = do
   let x = -(c / b)
-  MyPrint.printLine "Solutions" $ show x
+  MyPrint.printLine "Solutions" $ MyPrint.showNumber x
 
 -- 2次方程式 ax^2 + bx + c = 0 を解く
 solveEquation2 :: Double -> Double -> Double -> IO ()
@@ -60,7 +59,7 @@ discriminant2 a b c = b ^ 2 - 4 * a * c
 
 -- 2次方程式の解(D > 0)
 solveEquation2Positive :: Double -> Double -> Double -> String
-solveEquation2Positive a b c = show x1 ++ ", " ++ show x2
+solveEquation2Positive a b c = MyPrint.showNumber x1 ++ ", " ++ MyPrint.showNumber x2
   where
     d = discriminant2 a b c
     x1 = (-b + sqrt d) / (2 * a)
@@ -68,9 +67,8 @@ solveEquation2Positive a b c = show x1 ++ ", " ++ show x2
 
 -- 2次方程式の解(D = 0)
 solveEquation2Zero :: Double -> Double -> Double -> String
-solveEquation2Zero a 0 c = show 0.0
 solveEquation2Zero a b c =
-  let x = -(b / (2 * a)) in show x
+  let x = -(b / (2 * a)) in MyPrint.showNumber x
 
 -- 2次方程式の解(D < 0)
 solveEquation2Negative :: Double -> Double -> Double -> String

@@ -10,11 +10,15 @@ data Equation = Equation AST AST
 
 -- パーサー：方程式全体を解析
 parseEquation :: [Token] -> Equation
+parseEquation [] = error "Parse Error: no tokens"
 parseEquation tokens = case break (== TokEqual) tokens of
+  ([], _) -> error "Parse Error: Missing LHS"
+  (_, [TokEqual]) -> error "Parse Error: Missing RHS"
   (lhsTokens, TokEqual : rhsTokens) ->
     let lhs = parseExpr lhsTokens
         rhs = parseExpr rhsTokens
      in Equation lhs rhs
+  (_, []) -> error "Parse Error: Missing \"=\""
   _ -> error "Invalid equation format"
 
 -- 式を解析
@@ -80,7 +84,7 @@ parseParen (TokLParen : tokens) =
   let (subexpr, rest) = parseAddSub tokens
    in case rest of
         (TokRParen : tokens) -> (subexpr, tokens)
-        _ -> error "Missing closing parenthesis"
+        _ -> error "Parse Error: Missing closing parenthesis"
 parseParen tokens = parseTerm tokens
 
 -- 単項（数値や変数）を解析
@@ -95,4 +99,5 @@ parseTerm (TokIdent var : TokPow : TokNum exp : tokens) =
 -- 変数（X）
 parseTerm (TokIdent var : tokens) =
   (Var var 1, tokens)
-parseTerm tokens = error $ "Unexpected token sequence: " ++ show tokens
+parseTerm (t : _) = error $ "Parse Error: Unexpected Token in this Context: " ++ show t
+parseTerm [] = error "Parse Error: Neither Number nor Variable Token"
