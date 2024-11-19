@@ -1,4 +1,4 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
+module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
 
 import AST (AST (..))
 import Data.List qualified as List
@@ -8,11 +8,18 @@ import Data.Set qualified as Set
 import Debug.Trace (trace)
 import MyPrint (showNumber)
 import PolynomialBase
-import TypeClass (Addable (..), Multipliable (..), Subtractable (..))
+import TypeClass (Addable (..), Multipliable (..), Subtractable (..), Divisible (..))
 
 -- 変数の積
 mulVar :: PolynomialVariable -> PolynomialVariable -> PolynomialVariable
 mulVar = Map.unionWith (+)
+
+-- 変数の商
+divVar :: PolynomialVariable -> PolynomialVariable -> PolynomialVariable
+divVar t1 t2 = Map.filter (/= 0) added
+  where
+    t2' = Map.map negate t2
+    added = Map.unionWith (+) t1 t2'
 
 polynomialVarSignature :: PolynomialVariable -> String
 polynomialVarSignature var = joined
@@ -79,9 +86,16 @@ instance Subtractable PolynomialTerm where
 -- 項同士の積
 instance Multipliable PolynomialTerm where
   mul :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
-  mul (PolynomialTerm 0 _) _ = Just (PolynomialTerm 0 Map.empty)
-  mul _ (PolynomialTerm 0 _) = Just (PolynomialTerm 0 Map.empty)
+  mul (PolynomialTerm 0 _) _ = Just zeroTerm
+  mul _ (PolynomialTerm 0 _) = Just zeroTerm
   mul (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 * c2) (mulVar v1 v2))
+
+-- 項同士の商
+instance Divisible PolynomialTerm where
+  div :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
+  div (PolynomialTerm 0 _) _ = Just zeroTerm
+  div _ (PolynomialTerm 0 _) = error "Zero Division"
+  div (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 / c2) (divVar v1 v2))
 
 -- 多項式の符号を反転
 flipPolynomialSign :: Polynomial -> Polynomial
@@ -98,6 +112,13 @@ mulTermPolynomial s p = reduced
     pairs = Map.toList p
     muled = polynomialByTerms (map (\(k, t) -> fromJust (mul s t)) pairs)
     reduced = reducePolynomial muled
+
+divTermPolynomial :: Polynomial -> PolynomialTerm -> Polynomial
+divTermPolynomial p t = reduced
+  where
+    pairs = Map.toList p
+    divided = polynomialByTerms (map (\(k, t') -> fromJust (TypeClass.div t' t)) pairs)
+    reduced = reducePolynomial divided
 
 instance Addable Polynomial where
   add :: Polynomial -> Polynomial -> Maybe Polynomial
@@ -172,27 +193,32 @@ transformToStandard
   (Div a b) = r
     where
       isConstant :: Polynomial -> Bool
-      isConstant p = degreeOfPolynomial p == 0
+      isConstant p = dimensionOfPolynomial p == 0
 
       isZero :: Polynomial -> Bool
-      isZero p = isConstant p && findTerm p 0 == 0
+      isZero p = isConstant p && getCoeffOfTerm p 0 == 0
 
-      sa = transformToStandard a
-      sb = transformToStandard b
+      isMonomial :: Polynomial -> Bool
+      isMonomial p = dimensionOfPolynomial p == minDemensionOfPolynomial p
 
       divideByConstant :: Polynomial -> Double -> Polynomial
       divideByConstant p n = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (c / n) v) p
 
-      r = if isZero sb
-        then error "Division by zero"
-        else divideByConstant sa (findTerm sb 0)
+      sa = transformToStandard a
+      sb = transformToStandard b
+
+      r = case sb of
+        sb | isZero sb -> error "Division by zero"
+        sb | isConstant sb -> divideByConstant sa (getCoeffOfTerm sb 0)
+        sb | isMonomial sb -> let d = dimensionOfPolynomial sb in divTermPolynomial sa (fromJust (getTerm sb d))
+        _ -> error "Division by zero"
 
 -- 冪乗: いろいろ頑張る
 transformToStandard
   (Pow a b) = r
     where
       isConstant :: Polynomial -> Bool
-      isConstant p = degreeOfPolynomial p == 0
+      isConstant p = dimensionOfPolynomial p == 0
 
       isNonNegativeInteger :: Double -> Bool
       isNonNegativeInteger n = n >= 0 && n == fromIntegral (round n)
@@ -209,30 +235,42 @@ transformToStandard
 
       sa = transformToStandard a
       sb = transformToStandard b
-      a0 = findTerm sa 0
-      b0 = findTerm sb 0
+      a0 = getCoeffOfTerm sa 0
+      b0 = getCoeffOfTerm sb 0
       r = case (isConstant sa, isConstant sb) of
         (_, False) -> error "Not supported1"
         (True, _) -> polynomialByNum (Num (a0 ** b0))
         (False, _) -> powPolynomial sa b0
     
 
-type PolynomialInfo = (Set.Set String, Int)
+data PolynomialInfo = PolynomialInfo {
+  varSet :: Set.Set String,
+  maxDimension :: Int,
+  minDimension :: Int
+}
+  deriving (Show)
 
 inspectPolynomialInfo :: Polynomial -> PolynomialInfo
-inspectPolynomialInfo p = (varSet, degree)
-  where
-    varSet = polynomialVarSet p
-    degree = degreeOfPolynomial p
+inspectPolynomialInfo p = PolynomialInfo {
+    varSet = polynomialVarSet p,
+    maxDimension = dimensionOfPolynomial p,
+    minDimension = minDemensionOfPolynomial p
+  }
 
 -- 多項式がサポート範囲内かどうかを判定する. つまり:
 -- - 文字1種類以下
 -- - 次数2以下
 isSolvable :: PolynomialInfo -> (Bool, String)
-isSolvable (s, d)
-  | Set.size s > 1 = (False, "Too many variables")
-  | d > 2 = (False, "Too large dimension")
-  | otherwise = (True, "ok: This is a supported equation")
+isSolvable p = case (s, maxD, minD) of
+    _ | Set.size s > 1 -> (False, "Too many variables")
+    _ | maxD > 2 -> (False, "Too large dimension")
+    _ | minD < 0 -> (False, "Fractional dimension")
+    _ | otherwise -> (True, "ok: This is a supported equation")
+  where
+      s = varSet p
+      maxD = maxDimension p
+      minD = minDimension p
+
 
 -- 多項式の変数集合を返す
 -- -> すべての項の変数集合の和集合

@@ -9,3 +9,6 @@ class Subtractable a where
 
 class Multipliable a where
     mul :: a -> a -> Maybe a
+
+class Divisible a where
+    div :: a -> a -> Maybe a

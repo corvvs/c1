@@ -32,8 +32,8 @@ solve expression = do
   MyPrint.printLine "Reduced form" $ printPolynomial polynomial ++ " = 0"
 
   let pInfo = inspectPolynomialInfo polynomial
-  let (varSet, dimension) = pInfo
-  MyPrint.printLine "Dimension" $ show dimension
+  let maxD = maxDimension pInfo
+  MyPrint.printLine "Dimension" $ show maxD
 
   let (solvable, reason) = isSolvable pInfo
   if solvable

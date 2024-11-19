@@ -9,9 +9,9 @@ import Polynomial
 
 solveEquation :: Polynomial -> IO ()
 solveEquation p = do
-  let a = findTerm p 2
-  let b = findTerm p 1
-  let c = findTerm p 0
+  let a = getCoeffOfTerm p 2
+  let b = getCoeffOfTerm p 1
+  let c = getCoeffOfTerm p 0
   -- putStrLn ("(a, b, c) = (" ++ show a ++ ", " ++ show b ++ ", " ++ show c ++ ")")
   case (a, b, c) of
     (0, 0, _) -> solveEquation0 c
