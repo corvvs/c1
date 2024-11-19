@@ -1,6 +1,6 @@
 module Algebra (reduceEquation) where
 
-import AST (AST (..), makeMul, reduceMulDiv)
+import AST (AST (..))
 import Data.List (groupBy)
 import Data.Map (Map, empty, fromList)
 import Debug.Trace (trace)

@@ -167,6 +167,27 @@ transformToStandard
   (Mul a b) = fromJust r
     where
       r = mul (transformToStandard a) (transformToStandard b)
+-- 除算: いろいろ頑張る
+transformToStandard
+  (Div a b) = r
+    where
+      isConstant :: Polynomial -> Bool
+      isConstant p = degreeOfPolynomial p == 0
+
+      isZero :: Polynomial -> Bool
+      isZero p = isConstant p && findTerm p 0 == 0
+
+      sa = transformToStandard a
+      sb = transformToStandard b
+
+      divideByConstant :: Polynomial -> Double -> Polynomial
+      divideByConstant p n = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (c / n) v) p
+
+      r = if isZero sb
+        then error "Division by zero"
+        else divideByConstant sa (findTerm sb 0)
+
+-- 冪乗: いろいろ頑張る
 transformToStandard
   (Pow a b) = r
     where

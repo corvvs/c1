@@ -1,6 +1,6 @@
 module Parser (parseEquation, AST (..), Equation (..)) where
 
-import AST (AST (..), makeMul, reduceMulDiv)
+import AST (AST (..))
 import Debug.Trace (trace)
 import Lexer (Token (..), lexer, tokenRange)
 import MyPrint
@@ -92,6 +92,9 @@ parseMulDiv' :: ParseContext -> AST -> [Token] -> (ParseContext, AST, [Token])
 parseMulDiv' ctx ast (TokMul _ : tokens) =
   let (ctx', factor, rest) = parsePow (nc ctx 1) tokens
    in parseMulDiv' ctx' (Mul ast factor) rest
+parseMulDiv' ctx ast (TokDiv _ : tokens) =
+  let (ctx', factor, rest) = parsePow (nc ctx 1) tokens
+   in parseMulDiv' ctx' (Div ast factor) rest
 parseMulDiv' ctx ast tokens = (ctx, ast, tokens)
 
 -- 累乗を解析
