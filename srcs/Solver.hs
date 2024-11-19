@@ -4,15 +4,8 @@ import Data.List qualified as List
 import Data.Map qualified as Map
 import MyPrint
 import MyPrint qualified
+import PolynomialBase
 import Polynomial
-
--- 仮定: 多項式は1変数であること
-findTerm :: Polynomial -> Int -> Double
-findTerm p degree = maybe 0 (\(PolynomialTerm c _) -> c) term
-  where
-    pairs = Map.toList p
-    terms = map snd pairs
-    term = List.find (\term -> degreeOfTerm term == degree) terms
 
 solveEquation :: Polynomial -> IO ()
 solveEquation p = do

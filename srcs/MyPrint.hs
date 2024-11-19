@@ -18,7 +18,7 @@ endEmphasis :: String
 endEmphasis = "\ESC[39;49m\ESC[0m"
 
 emphasis :: String -> (Int, Int) -> String
-emphasis str range = mainBody ++ "\n" ++ subBody
+emphasis str range = subBody ++ "\n" ++ mainBody
   where
     pre = take (fst range) str
     target = take (snd range - fst range) (drop (fst range) str)
@@ -26,6 +26,6 @@ emphasis str range = mainBody ++ "\n" ++ subBody
     mainBody = pre ++ startEmphasis ++ target ++ endEmphasis ++ post
 
     preSpc = concat [" " | _ <- [1 .. length pre]]
-    targetHat = concat ["^" | _ <- [1 .. length target]]
+    targetHat = concat ["v" | _ <- [1 .. length target]]
     postSpc = concat [" " | _ <- [1 .. length post]]
     subBody = preSpc ++ targetHat ++ postSpc

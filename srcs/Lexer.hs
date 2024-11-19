@@ -1,4 +1,4 @@
-module Lexer (Token (..), lexer) where
+module Lexer (Token (..), lexer, tokenRange) where
 
 import Data.Char (isAlpha, isDigit, isSpace)
 import MyPrint
@@ -29,6 +29,17 @@ sayError ctx msg = do
   let i = index ctx
   let emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
   error $ "TokenizeError: " ++ msg ++ "\n" ++ emphasized
+
+tokenRange :: Token -> (Int, Int)
+tokenRange (TokNum _ r) = r
+tokenRange (TokIdent _ r) = r
+tokenRange (TokEqual r) = r
+tokenRange (TokPlus r) = r
+tokenRange (TokMinus r) = r
+tokenRange (TokMul r) = r
+tokenRange (TokPow r) = r
+tokenRange (TokLParen r) = r
+tokenRange (TokRParen r) = r
 
 lexer :: String -> [Token]
 lexer cs = let (_, tokens) = lexer_ (Context {expression = cs, index = 0}) cs in tokens

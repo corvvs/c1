@@ -6,6 +6,7 @@ FILES		:=\
 				Lexer.hs\
 				AST.hs\
 				Parser.hs\
+				PolynomialBase.hs\
 				Polynomial.hs\
 				Algebra.hs\
 				Solver.hs\

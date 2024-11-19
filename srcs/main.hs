@@ -23,7 +23,7 @@ solve expression = do
   let tokens = lexer expression
   MyPrint.printLine "Tokens" $ show tokens
 
-  let equation = parseEquation tokens
+  let equation = parseEquation expression tokens
   MyPrint.printLine "AST" $ show equation
   printEquation equation
 

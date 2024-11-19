@@ -7,10 +7,8 @@ import Data.Maybe (fromJust)
 import Data.Set qualified as Set
 import Debug.Trace (trace)
 import MyPrint (showNumber)
+import PolynomialBase
 import TypeClass (Addable (..), Multipliable (..), Subtractable (..))
-
--- 変数
-type PolynomialVariable = Map.Map String Int
 
 -- 変数の積
 mulVar :: PolynomialVariable -> PolynomialVariable -> PolynomialVariable
@@ -30,16 +28,6 @@ polynomialVarSignature' g d = case d of
   1 -> g
   _ -> g ++ "^" ++ show d
 
--- 項
-data PolynomialTerm = PolynomialTerm Double PolynomialVariable
-
--- 項のコンストラクタ by Num
-polynomialTermByNum :: AST -> PolynomialTerm
-polynomialTermByNum (Num a) = PolynomialTerm a Map.empty
-
--- 項のコンストラクタ by Var
-polynomialTermByVar :: AST -> PolynomialTerm
-polynomialTermByVar (Var n e) = PolynomialTerm 1 (Map.singleton n e)
 
 polynomialTermCoefficientSignature :: PolynomialTerm -> String
 polynomialTermCoefficientSignature (PolynomialTerm c _) = case c of
@@ -94,17 +82,6 @@ instance Multipliable PolynomialTerm where
   mul (PolynomialTerm 0 _) _ = Just (PolynomialTerm 0 Map.empty)
   mul _ (PolynomialTerm 0 _) = Just (PolynomialTerm 0 Map.empty)
   mul (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 * c2) (mulVar v1 v2))
-
--- 多項式
-type Polynomial = Map.Map String PolynomialTerm
-
--- ゼロ多項式 つまり 0
-zeroPolynomial :: Polynomial
-zeroPolynomial = Map.empty
-
--- 単位多項式 つまり 1
-unitPolynomial :: Polynomial
-unitPolynomial = Map.singleton "" (PolynomialTerm 1 Map.empty)
 
 -- 多項式の符号を反転
 flipPolynomialSign :: Polynomial -> Polynomial
@@ -190,6 +167,34 @@ transformToStandard
   (Mul a b) = fromJust r
     where
       r = mul (transformToStandard a) (transformToStandard b)
+transformToStandard
+  (Pow a b) = r
+    where
+      isConstant :: Polynomial -> Bool
+      isConstant p = degreeOfPolynomial p == 0
+
+      isNonNegativeInteger :: Double -> Bool
+      isNonNegativeInteger n = n >= 0 && n == fromIntegral (round n)
+
+      powPolynomial :: Polynomial -> Double -> Polynomial
+      powPolynomial p n = if isNonNegativeInteger n
+          then powPolynomial' unitPolynomial p (round n)
+          else error "Not supported"
+
+      powPolynomial' :: Polynomial -> Polynomial -> Int -> Polynomial
+      powPolynomial' p q n
+        | n <= 0 = p
+        | otherwise = powPolynomial' (fromJust (mul p q)) q (n - 1)
+
+      sa = transformToStandard a
+      sb = transformToStandard b
+      a0 = findTerm sa 0
+      b0 = findTerm sb 0
+      r = case (isConstant sa, isConstant sb) of
+        (_, False) -> error "Not supported1"
+        (True, _) -> polynomialByNum (Num (a0 ** b0))
+        (False, _) -> powPolynomial sa b0
+    
 
 type PolynomialInfo = (Set.Set String, Int)
 
@@ -217,13 +222,3 @@ polynomialVarSet p = Set.unions (map (\(k, t) -> termVarSet t) (Map.toList p))
     termVarSet :: PolynomialTerm -> Set.Set String
     termVarSet (PolynomialTerm _ var) = Map.keysSet var
 
--- 多項式の次数を返す
-degreeOfPolynomial :: Polynomial -> Int
-degreeOfPolynomial p =
-  if Map.null p
-    then 0
-    else maximum (map degreeOfTerm (Map.elems p))
-
--- 項の次数を返す
-degreeOfTerm :: PolynomialTerm -> Int
-degreeOfTerm (PolynomialTerm _ var) = sum (Map.elems var)
