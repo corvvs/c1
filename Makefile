@@ -17,8 +17,8 @@ OBJS		:=	$(FILES:%.hs=$(OBJ_DIR)/%.o)
 NAME		:= computor
 
 GHC 		:= ghc
-GHC_FLAGS	:= -c -i$(SRC_DIR) -package containers
-LD_FLAGS	:= -package containers
+GHC_FLAGS	:= -c -i$(SRC_DIR) -package containers -package text
+LD_FLAGS	:= -package containers -package text
 
 .PHONY:		all
 all:		$(NAME)

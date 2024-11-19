@@ -1,5 +1,6 @@
 module Parser (parseEquation, AST (..), Equation (..)) where
 
+import Data.Text qualified as T
 import AST (AST (..))
 import Debug.Trace (trace)
 import Lexer (Token (..), lexer, tokenRange)
@@ -10,41 +11,41 @@ data Equation = Equation AST AST
   deriving (Show, Eq)
 
 data ParseContext = ParseContext
-  { expression :: String,
+  { expression :: T.Text,
     tokens :: [Token],
-    index :: Int
+    idx :: Int
   }
   deriving (Show)
 
 nc :: ParseContext -> Int -> ParseContext
-nc ctx n = let i = index ctx in ctx {index = i + n}
+nc ctx n = let i = idx ctx in ctx {idx = i + n}
 
 sayError :: ParseContext -> String -> a
 sayError ctx msg =
-  error $ "ParseError: " ++ combinedMsg
+  error $ T.unpack $ T.concat [T.pack "ParseError: ", combinedMsg]
   where
-    combineMsg :: ParseContext -> String -> String
-    combineMsg ctx msg = msg ++ "\n" ++ emphasized ++ "\n"
+    combineMsg :: ParseContext -> String -> T.Text
+    combineMsg ctx msg = T.concat [T.pack msg, T.pack "\n", emphasized, T.pack "\n"]
       where
         ts = tokens ctx
-        i = index ctx - 1
+        i = idx ctx - 1
         t = ts !! i
         range = tokenRange t
         emphasized = MyPrint.emphasis (expression ctx) range
     combinedMsg =
-      if index ctx == 0
-        then msg
+      if idx ctx == 0
+        then T.pack msg
         else combineMsg ctx msg
 
 -- パーサー：方程式全体を解析
-parseEquation :: String -> [Token] -> Equation
+parseEquation :: T.Text -> [Token] -> Equation
 parseEquation expr ts =
-  let ctx = ParseContext {expression = expr, tokens = ts, index = 0}
+  let ctx = ParseContext {expression = expr, tokens = ts, idx = 0}
    in parseEquation' ctx ts
 
 parseEquation' :: ParseContext -> [Token] -> Equation
 parseEquation' ctx [] = sayError ctx "no tokens"
-parseEquation' ctx tokens = case break isEqual tokens of
+parseEquation' ctx tokens = case Prelude.break isEqual tokens of
   ([], _) -> sayError ctx "Missing LHS"
   (_, [TokEqual _]) -> sayError ctx "Missing RHS"
   (lhsTokens, TokEqual _ : rhsTokens) -> Equation lhs rhs
@@ -62,7 +63,7 @@ parseEquation' ctx tokens = case break isEqual tokens of
 parseExpr :: ParseContext -> [Token] -> (ParseContext, AST)
 parseExpr ctx tokens =
   let (ctx', ast, rest) = parseAddSub ctx tokens
-   in if null rest
+   in if Prelude.null rest
         then (ctx', ast)
         else sayError (nc ctx' 1) "Unexpected Extra Token(s)"
 
