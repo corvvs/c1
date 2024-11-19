@@ -29,7 +29,7 @@ parseEquation tokens = case break isEqual tokens of
 parseExpr :: [Token] -> AST
 parseExpr tokens =
   let (n, ast, rest) = parseAddSub 0 tokens
-   in if trace ("n = " ++ show n) null rest
+   in if null rest
         then ast
         else error "Unexpected token sequence"
 

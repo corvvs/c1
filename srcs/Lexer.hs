@@ -1,6 +1,7 @@
 module Lexer (Token (..), lexer) where
 
 import Data.Char (isAlpha, isDigit, isSpace)
+import MyPrint
 
 data Token
   = TokNum Double (Int, Int) -- 数値
@@ -14,33 +15,53 @@ data Token
   | TokRParen (Int, Int) -- ')'
   deriving (Show, Eq)
 
-lexer :: Int -> String -> (Int, [Token])
-lexer i [] = (i, [])
-lexer i (c : cs)
-  | isSpace c = lexer (i + 1) cs -- 空白は無視
-  | isDigit c = lexNum i (c : cs) -- 数値のトークン化
-  | isAlpha c = lexIdent i (c : cs) -- 識別子のトークン化
-  | c == '=' = let (i', tokens) = lexer (i + 1) cs in (i', TokEqual (i, i + 1) : tokens) -- '=' 演算子
-  | c == '+' = let (i', tokens) = lexer (i + 1) cs in (i', TokPlus (i, i + 1) : tokens) -- '+' 演算子
-  | c == '-' = let (i', tokens) = lexer (i + 1) cs in (i', TokMinus (i, i + 1) : tokens) -- '-' 演算子
-  | c == '*' = let (i', tokens) = lexer (i + 1) cs in (i', TokMul (i, i + 1) : tokens) -- '*' 演算子
-  | c == '^' = let (i', tokens) = lexer (i + 1) cs in (i', TokPow (i, i + 1) : tokens) -- '^' 演算子
-  | c == '(' = let (i', tokens) = lexer (i + 1) cs in (i', TokLParen (i, i + 1) : tokens) -- '(' 演算子
-  | c == ')' = let (i', tokens) = lexer (i + 1) cs in (i', TokRParen (i, i + 1) : tokens) -- ')' 演算子
-  | otherwise = error $ "Unexpected character: " ++ [c]
+data Context = Context
+  { expression :: String,
+    index :: Int
+  }
+  deriving (Show)
+
+nc :: Context -> Int -> Context
+nc ctx n = ctx {index = index ctx + n}
+
+sayError :: Context -> String -> a
+sayError ctx msg = do
+  let i = index ctx
+  let emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
+  error $ "TokenizeError: " ++ msg ++ "\n" ++ emphasized
+
+lexer :: String -> [Token]
+lexer cs = let (_, tokens) = lexer_ (Context {expression = cs, index = 0}) cs in tokens
+
+lexer_ :: Context -> String -> (Context, [Token])
+lexer_ ctx [] = (ctx, [])
+lexer_ ctx (c : cs)
+  | isSpace c = lexer_ (nc ctx 1) cs -- 空白は無視
+  | isDigit c = lexNum ctx (c : cs) -- 数値のトークン化
+  | isAlpha c = lexIdent ctx (c : cs) -- 識別子のトークン化
+  | c == '=' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokEqual (i, i + 1) : tokens) -- '=' 演算子
+  | c == '+' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokPlus (i, i + 1) : tokens) -- '+' 演算子
+  | c == '-' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokMinus (i, i + 1) : tokens) -- '-' 演算子
+  | c == '*' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokMul (i, i + 1) : tokens) -- '*' 演算子
+  | c == '^' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokPow (i, i + 1) : tokens) -- '^' 演算子
+  | c == '(' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokLParen (i, i + 1) : tokens) -- '(' 演算子
+  | c == ')' = let (ctx', tokens) = lexer_ (nc ctx 1) cs in (ctx', TokRParen (i, i + 1) : tokens) -- ')' 演算子
+  | otherwise = sayError ctx $ "Unexpected character: " ++ [c]
+  where
+    i = index ctx
 
 -- 数字を解析するヘルパー関数
-lexNum :: Int -> String -> (Int, [Token])
-lexNum i cs = (i'', TokNum (read numStr) (i, i') : tokens)
+lexNum :: Context -> String -> (Context, [Token])
+lexNum ctx cs = (ctx'', TokNum (read numStr) (index ctx, index ctx') : tokens)
   where
     (numStr, rest) = span (\c -> isDigit c || c == '.') cs
-    i' = i + length numStr
-    (i'', tokens) = lexer i' rest
+    ctx' = nc ctx (length numStr)
+    (ctx'', tokens) = lexer_ ctx' rest
 
 -- 識別子を解析するヘルパー関数
-lexIdent :: Int -> String -> (Int, [Token])
-lexIdent i cs = (i'', TokIdent identStr (i, i') : tokens)
+lexIdent :: Context -> String -> (Context, [Token])
+lexIdent ctx cs = (ctx'', TokIdent identStr (index ctx, index ctx') : tokens)
   where
     (identStr, rest) = span isAlpha cs
-    i' = i + length identStr
-    (i'', tokens) = lexer i' rest
+    ctx' = nc ctx (length identStr)
+    (ctx'', tokens) = lexer_ ctx' rest
