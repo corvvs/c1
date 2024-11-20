@@ -264,7 +264,7 @@ inspectPolynomialInfo p = PolynomialInfo {
 isSolvable :: PolynomialInfo -> (Bool, T.Text)
 isSolvable p = case (s, maxD, minD) of
     _ | Set.size s > 1 -> (False, T.pack "Too many variables")
-    _ | maxD > 2 -> (False, T.pack "Too large dimension")
+    _ | maxD > 3 -> (False, T.pack "Too large dimension")
     _ | minD < 0 -> (False, T.pack "Fractional dimension")
     _ | otherwise -> (True, T.pack "ok: This is a supported equation")
   where
