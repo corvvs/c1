@@ -8,7 +8,7 @@ $(NAME): build
 
 .PHONY:		build
 build:		
-	stack build
+	stack build --install-ghc
 
 .PHONY:		clean
 clean:
@@ -20,3 +20,15 @@ fclean:		clean
 
 .PHONY:		re
 re:			fclean all
+
+.PHONY:	up
+up:
+	docker-compose up --build -d
+
+.PHONY:	down
+down:
+	docker-compose down
+
+.PHONY:	it
+it:
+	docker-compose exec app bash
