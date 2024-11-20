@@ -4,6 +4,7 @@ import qualified Data.Text as T
 import MyPrint
 import PolynomialBase
 import qualified Data.Complex as C
+-- import Debug.Trace
 
 solveEquation :: Polynomial -> IO ()
 solveEquation p = do
@@ -138,9 +139,28 @@ solveEquation3 a_3 a_2 a_1 a_0 = do
     step4 p q = [v + w, omega * v + omega ** 2 * w, omega ** 2 * v + omega * w]
       where
         omega = (-1) / 2 C.:+ sqrt 3 / 2
-        s = (-q) / 2 C.:+ 0 :: MC
-        t = p / 3 C.:+ 0 :: MC
-        u = sqrt (s ** 2 + t ** 3)
-        v =  (s + u) ** (1 / 3)
-        w =  (s - u) ** (1 / 3)
+        s = (-q) / 2
+        t = p / 3
+        st = s ** 2 + t ** 3
+        (v, w) = case st of
+          st' | st' >= 0 -> step4real s st'
+          _ -> step4complex s st
     
+    step4real :: Double -> Double -> (MC, MC)
+    step4real s st = (v, w)
+      where
+        u = sqrt st
+        v = cubicRoot (s + u) C.:+ 0 :: MC
+        w = cubicRoot (s - u) C.:+ 0 :: MC
+
+    step4complex :: Double -> Double -> (MC, MC)
+    step4complex s st = (v, w)
+      where
+        uabs = sqrt (-st)
+        v = (s C.:+ uabs) ** (1.0/3)
+        w = (s C.:+ (-uabs)) ** (1.0/3)
+
+    cubicRoot :: Double -> Double
+    cubicRoot x
+      | x >= 0 = x ** (1 / 3)
+      | otherwise = -((-x) ** (1 / 3))
