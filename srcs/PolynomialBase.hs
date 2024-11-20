@@ -1,5 +1,5 @@
 
-module PolynomialBase(PolynomialVariable (..), PolynomialTerm (..), Polynomial (..), zeroTerm, polynomialTermByNum, polynomialTermByVar, zeroPolynomial, unitPolynomial, getTerm, getCoeffOfTerm, dimensionOfPolynomial, minDemensionOfPolynomial, degreeOfTerm) where
+module PolynomialBase(PolynomialVariable (..), PolynomialTerm (..), Polynomial (..), zeroTerm, polynomialTermByNum, polynomialTermByVar, zeroPolynomial, unitPolynomial, getTerm, getCoeffOfTerm, dimensionOfPolynomial, minDemensionOfPolynomial, dimensionOfTerm) where
 
 import AST (AST (..))
 import Data.List qualified as List
@@ -41,7 +41,7 @@ unitPolynomial = Map.singleton T.empty (PolynomialTerm 1 Map.empty)
 
 
 getTerm :: Polynomial -> Int -> Maybe PolynomialTerm
-getTerm p degree = List.find (\term -> degreeOfTerm term == degree) terms
+getTerm p degree = List.find (\term -> dimensionOfTerm term == degree) terms
   where
     terms = Map.elems p
 
@@ -56,15 +56,15 @@ dimensionOfPolynomial :: Polynomial -> Int
 dimensionOfPolynomial p =
   if Map.null p
     then 0
-    else Prelude.maximum (Prelude.map degreeOfTerm (Map.elems p))
+    else Prelude.maximum (Prelude.map dimensionOfTerm (Map.elems p))
 
 -- 多項式の最小次数を返す
 minDemensionOfPolynomial :: Polynomial -> Int
 minDemensionOfPolynomial p =
   if Map.null p
     then 0
-    else Prelude.minimum (Prelude.map degreeOfTerm (Map.elems p))
+    else Prelude.minimum (Prelude.map dimensionOfTerm (Map.elems p))
 
 -- 項の次数を返す
-degreeOfTerm :: PolynomialTerm -> Int
-degreeOfTerm (PolynomialTerm _ var) = sum (Map.elems var)
+dimensionOfTerm :: PolynomialTerm -> Int
+dimensionOfTerm (PolynomialTerm _ var) = sum (Map.elems var)

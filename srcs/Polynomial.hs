@@ -1,4 +1,4 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, degreeOfTerm) where
+module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, dimensionOfTerm) where
 
 import AST (AST (..))
 import Data.List qualified as List
@@ -49,7 +49,7 @@ polynomialTermSignature (PolynomialTerm _ var) = polynomialVarSignature var
 polynomialTermPrint :: Int -> PolynomialTerm -> T.Text
 polynomialTermPrint index term = case term of
   PolynomialTerm 0 _ -> T.empty
-  _ | degreeOfTerm term == 0 -> coefficient
+  _ | dimensionOfTerm term == 0 -> coefficient
   PolynomialTerm c _ | abs c == 1 -> T.concat [coefficient, variable]
   _ -> T.concat [coefficient, T.pack "*", variable]
   where
@@ -170,7 +170,9 @@ printPolynomial p = case p of
   p | Map.null p -> T.pack "0"
   _ -> T.unwords indexedTerms
     where
-      indexedTerms = zipWith polynomialTermPrint [0 ..] (Map.elems p)
+      terms = Map.elems p
+      sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
+      indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
 transformToStandard :: AST -> Polynomial
 transformToStandard (Num a) = polynomialByNum (Num a)

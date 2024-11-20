@@ -15,7 +15,7 @@ solveEquation p = do
   let a2 = getCoeffOfTerm p 2
   let a1 = getCoeffOfTerm p 1
   let a0 = getCoeffOfTerm p 0
-  -- putStrLn ("(a, b, c) = (" ++ show a ++ ", " ++ show b ++ ", " ++ show c ++ ")")
+
   case (a3, a2, a1, a0) of
     (0, 0, 0, _) -> solveEquation0 a0
     (0, 0, _, _) -> solveEquation1 a1 a0
