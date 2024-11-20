@@ -10,10 +10,10 @@ showNumber :: Double -> T.Text
 showNumber n = T.pack $ showNumber' n
   where
     showNumber' :: Double -> String
-    showNumber' n
-      | n > 0 = "+ " ++ show n
-      | n < 0 = "- " ++ show (abs n)
-      | otherwise = show (abs n)
+    showNumber' n'
+      | n' > 0 = "+ " ++ show n'
+      | n' < 0 = "- " ++ show (abs n')
+      | otherwise = show (abs n')
 
 startEmphasis :: T.Text
 startEmphasis = T.pack "\ESC[01;31m"
@@ -38,6 +38,6 @@ emphasis str range = T.concat [subBody, T.pack "\n", mainBody]
 
     tCharWidth :: Char -> Int
     tCharWidth c = case c of
-      c | c <= '\x7F' -> 1
+      c' | c' <= '\x7F' -> 1
       _ -> 2
 

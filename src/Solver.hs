@@ -1,12 +1,8 @@
 module Solver (solveEquation) where
 
-import qualified Data.List as List
-import qualified Data.Map as Map
 import qualified Data.Text as T
 import MyPrint
-import qualified MyPrint
 import PolynomialBase
-import Polynomial
 import qualified Data.Complex as C
 
 solveEquation :: Polynomial -> IO ()
@@ -38,21 +34,21 @@ solveEquation2 :: Double -> Double -> Double -> IO ()
 solveEquation2 a b c = do
   let d = discriminant2 a b c
   let polarity = case d of
-        d | d > 0 -> "+"
-        d | d == 0 -> "0"
-        d | d < 0 -> "-"
+        d' | d' > 0 -> "+"
+        d' | d' < 0 -> "-"
+        _ -> "0"
   MyPrint.printLine "Discriminant" $ T.pack $ show d ++ "(" ++ polarity ++ ")"
   let solutions =
         ( case d of
-            d | d > 0 -> solveEquation2Positive a b c
-            d | d < 0 -> solveEquation2Negative a b c
+            d' | d' > 0 -> solveEquation2Positive a b c
+            d' | d' < 0 -> solveEquation2Negative a b c
             _ -> solveEquation2Zero a b c
         )
   MyPrint.printLine "Solutions" solutions
 
 -- 2次方程式の判別式 D = b^2 - 4ac
 discriminant2 :: Double -> Double -> Double -> Double
-discriminant2 a b c = b ^ 2 - 4 * a * c
+discriminant2 a b c = b ** 2 - 4 * a * c
 
 -- 2次方程式の解(D > 0)
 solveEquation2Positive :: Double -> Double -> Double -> T.Text
@@ -64,22 +60,22 @@ solveEquation2Positive a b c = T.concat[MyPrint.showNumber x1, T.pack ", ", MyPr
 
 -- 2次方程式の解(D = 0)
 solveEquation2Zero :: Double -> Double -> Double -> T.Text
-solveEquation2Zero a b c =
+solveEquation2Zero a b _ =
   let x = -(b / (2 * a)) in MyPrint.showNumber x
 
 -- 2次方程式の解(D < 0)
 solveEquation2Negative :: Double -> Double -> Double -> T.Text
-solveEquation2Negative a b c = T.pack $ pr ++ pi
+solveEquation2Negative a b c = T.pack $ part_r ++ part_i
   where
     d = discriminant2 a b c
     denominator = 2 * a
     real = -(b / denominator)
-    pr =
+    part_r =
       if real == 0
         then ""
         else show real ++ " "
     imaginary = sqrt (-d) / denominator
-    pi =
+    part_i =
       if imaginary >= 0
         then "+/- " ++ show imaginary ++ " i"
         else "-/+ " ++ show (abs imaginary) ++ " i"
@@ -91,9 +87,9 @@ solveEquation3 :: Double -> Double -> Double -> Double -> IO ()
 solveEquation3 a_3 a_2 a_1 a_0 = do
   let d = discriminant3 a_3 a_2 a_1 a_0
   let polarity = case d of
-        d | d > 0 -> "+"
-        d | d == 0 -> "0"
-        d | d < 0 -> "-"
+        d' | d' > 0 -> "+"
+        d' | d' < 0 -> "-"
+        _ -> "0"
   MyPrint.printLine "Discriminant" $ T.pack $ show d ++ "(" ++ polarity ++ ")"
   let solutions = step1 a_3 a_2 a_1 a_0
   MyPrint.printLine "Solutions" $ T.pack $ foldr1 (\a b -> a ++ ", " ++ b) $ map showComplex solutions
@@ -105,41 +101,46 @@ solveEquation3 a_3 a_2 a_1 a_0 = do
     showComplex' :: Double -> Double -> String
     showComplex' real imaginary = case (real, imaginary) of
       (0, 0) -> show $ abs real
-      (0, _) -> pi
-      (_, 0) -> pr
-      (_, _) -> pr ++ pi
+      (0, _) -> part_i
+      (_, 0) -> part_r
+      (_, _) -> part_r ++ part_i
       where
-        pr =
+        part_r =
           if real == 0
             then ""
             else show real ++ " "
-        pi =
+        part_i =
           if imaginary >= 0
             then "+ " ++ show imaginary ++ " i"
             else "- " ++ show (abs imaginary) ++ " i"
 
     discriminant3 :: Double -> Double -> Double -> Double -> Double
-    discriminant3 a_3 a_2 a_1 a_0 = (-4) * a_1 ^ 3 * a_3 + a_1 ^ 2 * a_2 ^ 2 - 4 * a_0 * a_2 ^ 3 - 18 * a_0 * a_1 * a_2 * a_3 - 27 * a_0 ^ 2 * a_3 ^ 2
+    discriminant3 a_3' a_2' a_1' a_0' =
+      (-4) * a_1' ** 3 * a_3' 
+      + a_1' ** 2 * a_2' ** 2 
+      - 4 * a_0' * a_2' ** 3 
+      - 18 * a_0' * a_1' * a_2' * a_3' 
+      - 27 * a_0' ** 2 * a_3' ** 2
 
     step1 :: Double -> Double -> Double -> Double -> [MC]
-    step1 a_3 a_2 a_1 a_0 = step2 aa_2 aa_1 aa_0
+    step1 a_3' a_2' a_1' a_0' = step2 aa_2 aa_1 aa_0
       where
-        aa_0 = a_0 / a_3
-        aa_1 = a_1 / a_3
-        aa_2 = a_2 / a_3
+        aa_0 = a_0' / a_3'
+        aa_1 = a_1' / a_3'
+        aa_2 = a_2' / a_3'
     step2 :: Double -> Double -> Double -> [MC]
     step2 aa_2 aa_1 aa_0 = map (\y -> y - (aa_2 / 3 C.:+ 0.0)) ys
       where
-        p = aa_1 - aa_2 ^ 2 / 3
-        q = aa_0 - aa_1 * aa_2 / 3 + 2 * aa_2 ^ 3 / 27
+        p = aa_1 - aa_2 ** 2 / 3
+        q = aa_0 - aa_1 * aa_2 / 3 + 2 * aa_2 ** 3 / 27
         ys = step4 p q
     step4 :: Double -> Double -> [MC]
-    step4 p q = [v + w, omega * v + omega ^ 2 * w, omega ^ 2 * v + omega * w]
+    step4 p q = [v + w, omega * v + omega ** 2 * w, omega ** 2 * v + omega * w]
       where
         omega = (-1) / 2 C.:+ sqrt 3 / 2
-        s = (-q) / 2 C.:+ 0
-        t = p / 3 C.:+ 0
-        u = sqrt (s ^ 2 + t ^ 3)
+        s = (-q) / 2 C.:+ 0 :: MC
+        t = p / 3 C.:+ 0 :: MC
+        u = sqrt (s ** 2 + t ** 3)
         v =  (s + u) ** (1 / 3)
         w =  (s - u) ** (1 / 3)
     
