@@ -1,11 +1,7 @@
 module Algebra (reduceEquation) where
 
-import AST (AST (..))
-import Data.List (groupBy)
-import Data.Map (Map, empty, fromList)
-import Debug.Trace (trace)
-import Parser (AST (..), Equation (..))
-import Polynomial (Polynomial, PolynomialTerm (..))
+import AST (AST(..))
+import Parser (Equation (..))
 
 -- 与えられた方程式を, 右辺が 0 になるように変形する
 reduceEquation :: Equation -> Equation

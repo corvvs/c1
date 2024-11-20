@@ -1,11 +1,13 @@
-module Polynomial (PolynomialTerm (..), PolynomialVariable, Polynomial, PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable, dimensionOfTerm) where
+{-# LANGUAGE InstanceSigs #-}
+
+module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable) where
 
 import AST (AST (..))
-import Data.List qualified as List
-import Data.Map qualified as Map
+import qualified Data.List as List
+import qualified Data.Map as Map
 import Data.Maybe (fromJust)
-import Data.Set qualified as Set
-import Data.Text qualified as T
+import qualified Data.Set as Set
+import qualified Data.Text as T
 import Debug.Trace (trace)
 import MyPrint (showNumber)
 import PolynomialBase
@@ -121,17 +123,15 @@ divTermPolynomial p t = reduced
     divided = polynomialByTerms (map (\(k, t') -> fromJust (TypeClass.div t' t)) pairs)
     reduced = reducePolynomial divided
 
-instance Addable Polynomial where
-  add :: Polynomial -> Polynomial -> Maybe Polynomial
-  add p1 p2 = Just (reducePolynomial united)
-    where
-      f :: PolynomialTerm -> PolynomialTerm -> PolynomialTerm
-      f t1 t2 = fromJust (add t1 t2)
-      united = Map.unionWith f p1 p2
+addPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
+addPolynomials p1 p2 = Just (reducePolynomial united)
+  where
+    f :: PolynomialTerm -> PolynomialTerm -> PolynomialTerm
+    f t1 t2 = fromJust (add t1 t2)
+    united = Map.unionWith f p1 p2
 
-instance Subtractable Polynomial where
-  sub :: Polynomial -> Polynomial -> Maybe Polynomial
-  sub p1 p2 =
+subPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
+subPolynomials p1 p2 =
     let untied =
           Map.unionWith
             (\t1 t2 -> fromJust (add t1 t2))
@@ -139,16 +139,15 @@ instance Subtractable Polynomial where
             (flipPolynomialSign p2)
      in Just (reducePolynomial untied)
 
-instance Multipliable Polynomial where
-  mul :: Polynomial -> Polynomial -> Maybe Polynomial
-  mul p1 p2 = just
+mulPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
+mulPolynomials p1 p2 = just
     where
       ts1 = Map.toList p1
       f :: (T.Text, PolynomialTerm) -> Polynomial -> Polynomial
       f (sig, term) ac = fromJust added
         where
           pp = mulTermPolynomial term p2
-          added = add ac pp
+          added = addPolynomials ac pp
       folded = foldr f zeroPolynomial ts1
       just = Just folded
 
@@ -182,15 +181,15 @@ transformToStandard
     where
       sa = transformToStandard a
       sb = transformToStandard b
-      added = add sa sb
+      added = addPolynomials sa sb
 transformToStandard
   (Sub a b) = fromJust r
     where
-      r = sub (transformToStandard a) (transformToStandard b)
+      r = subPolynomials (transformToStandard a) (transformToStandard b)
 transformToStandard
   (Mul a b) = fromJust r
     where
-      r = mul (transformToStandard a) (transformToStandard b)
+      r = mulPolynomials (transformToStandard a) (transformToStandard b)
 -- 除算: いろいろ頑張る
 transformToStandard
   (Div a b) = r
@@ -234,7 +233,7 @@ transformToStandard
       powPolynomial' :: Polynomial -> Polynomial -> Int -> Polynomial
       powPolynomial' p q n
         | n <= 0 = p
-        | otherwise = powPolynomial' (fromJust (mul p q)) q (n - 1)
+        | otherwise = powPolynomial' (fromJust (mulPolynomials p q)) q (n - 1)
 
       sa = transformToStandard a
       sb = transformToStandard b

@@ -1,13 +1,13 @@
 module Solver (solveEquation) where
 
-import Data.List qualified as List
-import Data.Map qualified as Map
-import Data.Text qualified as T
+import qualified Data.List as List
+import qualified Data.Map as Map
+import qualified Data.Text as T
 import MyPrint
-import MyPrint qualified
+import qualified MyPrint
 import PolynomialBase
 import Polynomial
-import Data.Complex qualified as C
+import qualified Data.Complex as C
 
 solveEquation :: Polynomial -> IO ()
 solveEquation p = do

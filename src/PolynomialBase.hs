@@ -2,11 +2,11 @@
 module PolynomialBase(PolynomialVariable (..), PolynomialTerm (..), Polynomial (..), zeroTerm, polynomialTermByNum, polynomialTermByVar, zeroPolynomial, unitPolynomial, getTerm, getCoeffOfTerm, dimensionOfPolynomial, minDemensionOfPolynomial, dimensionOfTerm) where
 
 import AST (AST (..))
-import Data.List qualified as List
-import Data.Map qualified as Map
+import qualified Data.List as List
+import qualified Data.Map as Map
 import Debug.Trace (trace)
 import TypeClass (Addable (..), Multipliable (..), Subtractable (..))
-import Data.Text qualified as T
+import qualified Data.Text as T
 
 -- 変数
 type PolynomialVariable = Map.Map T.Text Int

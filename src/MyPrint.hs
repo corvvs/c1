@@ -1,7 +1,7 @@
 module MyPrint (printLine, showNumber, emphasis) where
 
 import Text.Printf
-import Data.Text qualified as T
+import qualified Data.Text as T
 
 printLine :: String -> T.Text -> IO ()
 printLine a b = printf "[%-12s] %s\n" a (T.unpack b)
@@ -31,7 +31,7 @@ emphasis str range = T.concat [subBody, T.pack "\n", mainBody]
 
     preSpc = T.concat [T.pack " " | _ <- [1 .. tWidth pre]]
     targetHat = T.concat [T.pack "v" | _ <- [1 .. tWidth target]]
-    subBody = T.concat [preSpc, targetHat]
+    subBody = T.concat [preSpc, startEmphasis, targetHat, endEmphasis]
 
     tWidth :: T.Text -> Int
     tWidth txt = sum . map tCharWidth $ T.unpack txt
