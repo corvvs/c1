@@ -8,7 +8,7 @@ $(NAME): build
 
 .PHONY:		build
 build:		
-	stack build --install-ghc
+	stack build
 
 .PHONY:		clean
 clean:
