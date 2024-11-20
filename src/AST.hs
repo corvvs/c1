@@ -1,5 +1,5 @@
 module AST(AST(..)) where
-import Data.Text qualified as T
+import qualified Data.Text as T
 
 -- 構文木のデータ型
 data AST

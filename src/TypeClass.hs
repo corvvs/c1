@@ -1,4 +1,4 @@
-module TypeClass where
+module TypeClass(Addable(..), Subtractable(..), Multipliable(..), Divisible(..)) where
 
 -- 型クラスズ
 class Addable a where

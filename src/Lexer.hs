@@ -1,6 +1,6 @@
 module Lexer (Token (..), lexer, tokenRange) where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Data.Char (isAlpha, isDigit, isSpace)
 import MyPrint
 import Debug.Trace (trace)

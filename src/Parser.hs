@@ -1,6 +1,6 @@
 module Parser (parseEquation, AST (..), Equation (..)) where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import AST (AST (..))
 import Debug.Trace (trace)
 import Lexer (Token (..), lexer, tokenRange)

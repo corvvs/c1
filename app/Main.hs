@@ -1,3 +1,5 @@
+module Main (main) where
+
 import Algebra
 import Lexer
 import MyPrint
@@ -5,8 +7,7 @@ import Parser (Equation (Equation), parseEquation)
 import Polynomial
 import Solver
 import System.Environment
-import System.IO
-import Data.Text qualified as T
+import qualified Data.Text as T
 
 showUsage :: IO ()
 showUsage = do
@@ -28,7 +29,7 @@ solve expression = do
   MyPrint.printLine "AST" $ T.pack $ show equation
   printEquation equation
 
-  let (Equation lhsAst rhsAst) = reduceEquation equation
+  let (Equation lhsAst _) = reduceEquation equation
   let polynomial = transformToStandard lhsAst
   MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
 
