@@ -1,5 +1,6 @@
 module Parser (parseEquation, AST (..), Equation (..)) where
 
+import Control.Monad.Except
 import qualified Data.Text as T
 import AST (AST (..))
 import Lexer (Token (..), tokenRange)
@@ -37,10 +38,10 @@ sayError ctx msg =
         else combineMsg ctx msg
 
 -- パーサー：方程式全体を解析
-parseEquation :: T.Text -> [Token] -> Equation
+parseEquation :: T.Text -> [Token] -> ExceptT T.Text IO Equation
 parseEquation expr ts =
   let ctx = ParseContext {expression = expr, tokens = ts, idx = 0}
-   in parseEquation' ctx ts
+   in return $ parseEquation' ctx ts
 
 parseEquation' :: ParseContext -> [Token] -> Equation
 parseEquation' ctx [] = sayError ctx "no tokens"

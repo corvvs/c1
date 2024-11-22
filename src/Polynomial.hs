@@ -1,10 +1,11 @@
-module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
+module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomialI, inspectPolynomialInfo, isSolvable) where
 
 import AST (AST (..))
 import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
+import Control.Monad.Except
 import qualified Data.Text as T
 import TypeClass (Addable (..), Multipliable (..), Divisible (..))
 import PolynomialBase
@@ -122,6 +123,9 @@ printPolynomial p = case p of
       sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
       indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
+reduceToPolynomialI :: AST -> ExceptT T.Text IO Polynomial
+reduceToPolynomialI a = return (reduceToPolynomial a)
+
 reduceToPolynomial :: AST -> Polynomial
 reduceToPolynomial (Num a) = polynomialByNum (Num a)
 reduceToPolynomial (Var n e) = polynomialByVar (Var n e)
@@ -196,8 +200,8 @@ data PolynomialInfo = PolynomialInfo {
 }
   deriving (Show)
 
-inspectPolynomialInfo :: Polynomial -> PolynomialInfo
-inspectPolynomialInfo p = PolynomialInfo {
+inspectPolynomialInfo :: Polynomial -> ExceptT T.Text IO PolynomialInfo
+inspectPolynomialInfo p = return PolynomialInfo {
     varSet = polynomialVarSet p,
     maxDimension = dimensionOfPolynomial p,
     minDimension = minDemensionOfPolynomial p
@@ -206,8 +210,8 @@ inspectPolynomialInfo p = PolynomialInfo {
 -- 多項式がサポート範囲内かどうかを判定する. つまり:
 -- - 文字1種類以下
 -- - 次数2以下
-isSolvable :: PolynomialInfo -> (Bool, T.Text)
-isSolvable p = case (s, maxD, minD) of
+isSolvable :: PolynomialInfo -> ExceptT T.Text IO (Bool, T.Text)
+isSolvable p = return $ case (s, maxD, minD) of
     _ | Set.size s > 1 -> (False, T.pack "Too many variables")
     _ | maxD > 3 -> (False, T.pack "Too large dimension")
     _ | minD < 0 -> (False, T.pack "Fractional dimension")

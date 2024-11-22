@@ -1,9 +1,9 @@
 module Lexer (Token (..), lexer, tokenRange) where
 
+import Control.Monad.Except
 import qualified Data.Text as T
 import Data.Char (isDigit, isSpace)
 import MyPrint
-
 type TokenRange = (Int, Int)
 
 data Token
@@ -46,8 +46,8 @@ tokenRange (TokPow r) = r
 tokenRange (TokLParen r) = r
 tokenRange (TokRParen r) = r
 
-lexer :: T.Text -> [Token]
-lexer cs = let (_, tokens) = lexer_ (Context {expression = cs, idx = 0}) cs in tokens
+lexer :: T.Text -> ExceptT T.Text IO [Token]
+lexer cs = let (_, tokens) = lexer_ (Context {expression = cs, idx = 0}) cs in return tokens
 
 lexer_ :: Context -> T.Text -> (Context, [Token])
 lexer_ ctx txt = case T.uncons txt of
