@@ -1,4 +1,4 @@
-module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, transformToStandard, inspectPolynomialInfo, isSolvable) where
+module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
 
 import AST (AST (..))
 import qualified Data.List as List
@@ -122,51 +122,46 @@ printPolynomial p = case p of
       sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
       indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
-transformToStandard :: AST -> Polynomial
-transformToStandard (Num a) = polynomialByNum (Num a)
-transformToStandard (Var n e) = polynomialByVar (Var n e)
-transformToStandard
-  (Add a b) = fromJust added
-    where
-      sa = transformToStandard a
-      sb = transformToStandard b
-      added = addPolynomials sa sb
-transformToStandard
-  (Sub a b) = fromJust r
-    where
-      r = subPolynomials (transformToStandard a) (transformToStandard b)
-transformToStandard
-  (Mul a b) = fromJust r
-    where
-      r = mulPolynomials (transformToStandard a) (transformToStandard b)
+reduceToPolynomial :: AST -> Polynomial
+reduceToPolynomial (Num a) = polynomialByNum (Num a)
+reduceToPolynomial (Var n e) = polynomialByVar (Var n e)
+reduceToPolynomial (Add a b) = fromJust added
+  where
+    sa = reduceToPolynomial a
+    sb = reduceToPolynomial b
+    added = addPolynomials sa sb
+reduceToPolynomial (Sub a b) = fromJust r
+  where
+    r = subPolynomials (reduceToPolynomial a) (reduceToPolynomial b)
+reduceToPolynomial (Mul a b) = fromJust r
+  where
+    r = mulPolynomials (reduceToPolynomial a) (reduceToPolynomial b)
 -- 除算: いろいろ頑張る
-transformToStandard
-  (Div a b) = r
-    where
-      isConstant :: Polynomial -> Bool
-      isConstant p = dimensionOfPolynomial p == 0
+reduceToPolynomial (Div a b) = r
+  where
+    isConstant :: Polynomial -> Bool
+    isConstant p = dimensionOfPolynomial p == 0
 
-      isZero :: Polynomial -> Bool
-      isZero p = isConstant p && getCoeffOfTerm p 0 == 0
+    isZero :: Polynomial -> Bool
+    isZero p = isConstant p && getCoeffOfTerm p 0 == 0
 
-      isMonomial :: Polynomial -> Bool
-      isMonomial p = dimensionOfPolynomial p == minDemensionOfPolynomial p
+    isMonomial :: Polynomial -> Bool
+    isMonomial p = dimensionOfPolynomial p == minDemensionOfPolynomial p
 
-      divideByConstant :: Polynomial -> Double -> Polynomial
-      divideByConstant p n = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (c / n) v) p
+    divideByConstant :: Polynomial -> Double -> Polynomial
+    divideByConstant p n = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (c / n) v) p
 
-      sa = transformToStandard a
-      sb = transformToStandard b
+    sa = reduceToPolynomial a
+    sb = reduceToPolynomial b
 
-      r = case sb of
-        sb' | isZero sb' -> error "Division by zero"
-        sb' | isConstant sb' -> divideByConstant sa (getCoeffOfTerm sb' 0)
-        sb' | isMonomial sb' -> let d = dimensionOfPolynomial sb' in divTermPolynomial sa (fromJust (getTerm sb' d))
-        _ -> error "Division by zero"
+    r = case sb of
+      sb' | isZero sb' -> error "Division by zero"
+      sb' | isConstant sb' -> divideByConstant sa (getCoeffOfTerm sb' 0)
+      sb' | isMonomial sb' -> let d = dimensionOfPolynomial sb' in divTermPolynomial sa (fromJust (getTerm sb' d))
+      _ -> error "Division by Polynomial is not supported"
 
 -- 冪乗: いろいろ頑張る
-transformToStandard
-  (Pow a b) = r
+reduceToPolynomial (Pow a b) = r
     where
       isConstant :: Polynomial -> Bool
       isConstant p = dimensionOfPolynomial p == 0
@@ -184,8 +179,8 @@ transformToStandard
         | n <= 0 = p
         | otherwise = powPolynomial' (fromJust (mulPolynomials p q)) q (n - 1)
 
-      sa = transformToStandard a
-      sb = transformToStandard b
+      sa = reduceToPolynomial a
+      sb = reduceToPolynomial b
       a0 = getCoeffOfTerm sa 0
       b0 = getCoeffOfTerm sb 0
       r = case (isConstant sa, isConstant sb) of

@@ -16,8 +16,8 @@ showUsage = do
 
 printEquation :: Equation -> IO ()
 printEquation (Equation lhs rhs) = do
-  let pl = transformToStandard lhs
-  let pr = transformToStandard rhs
+  let pl = reduceToPolynomial lhs
+  let pr = reduceToPolynomial rhs
   MyPrint.printLine "Raw form" $ T.concat [printPolynomial pl, T.pack " = ", printPolynomial pr]
 
 solve :: T.Text -> IO ()
@@ -30,7 +30,7 @@ solve expression = do
   printEquation equation
 
   let (Equation lhsAst _) = reduceEquation equation
-  let polynomial = transformToStandard lhsAst
+  let polynomial = reduceToPolynomial lhsAst
   MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
 
   let pInfo = inspectPolynomialInfo polynomial
