@@ -1,10 +1,11 @@
-module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
+module Polynomial (PolynomialInfo(..), reduceEquation, printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
 
 import AST (AST (..))
 import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
+import Parser (Equation (Equation))
 import Exception
 import qualified Data.Text as T
 import TypeClass (Addable (..), Multipliable (..), Divisible (..))
@@ -51,9 +52,6 @@ polynomialTermPrint index term = case term of
       | otherwise = T.pack (sign ++ show (abs c))
     variable = polynomialVarSignature var
 
--- 多項式の符号を反転
-flipPolynomialSign :: Polynomial -> Polynomial
-flipPolynomialSign = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (-c) v)
 
 -- ゼロの項を除去する
 reducePolynomial :: Polynomial -> Polynomial
@@ -64,43 +62,46 @@ mulTermPolynomial :: PolynomialTerm -> Polynomial -> Polynomial
 mulTermPolynomial s p = reduced
   where
     pairs = Map.toList p
-    muled = polynomialByTerms (map (\(_, t) -> fromJust (TypeClass.mul s t)) pairs)
+    muled = polynomialByTerms (map (\(_, t) -> fromJust (s <**> t)) pairs)
     reduced = reducePolynomial muled
 
 divTermPolynomial :: Polynomial -> PolynomialTerm -> Polynomial
 divTermPolynomial p t = reduced
   where
     pairs = Map.toList p
-    divided = polynomialByTerms (map (\(_, t') -> fromJust (TypeClass.div t' t)) pairs)
+    divided = polynomialByTerms (map (\(_, t') -> fromJust (t' </> t)) pairs)
     reduced = reducePolynomial divided
 
-addPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
-addPolynomials p1 p2 = Just (reducePolynomial united)
+addPolynomials :: Polynomial -> Polynomial -> Polynomial
+addPolynomials p1 p2 = reducePolynomial united
   where
     f :: PolynomialTerm -> PolynomialTerm -> PolynomialTerm
-    f t1 t2 = fromJust (add t1 t2)
+    f t1 t2 = fromJust (t1 <+> t2)
     united = Map.unionWith f p1 p2
 
-subPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
+subPolynomials :: Polynomial -> Polynomial -> Polynomial
 subPolynomials p1 p2 =
-    let untied =
-          Map.unionWith
-            (\t1 t2 -> fromJust (add t1 t2))
-            p1
-            (flipPolynomialSign p2)
-     in Just (reducePolynomial untied)
+  let untied =
+        Map.unionWith
+          (\t1 t2 -> fromJust (t1 <+> t2))
+          p1
+          (flipPolynomialSign p2)
+    in reducePolynomial untied
+  where
+    -- 多項式の符号を反転
+    flipPolynomialSign :: Polynomial -> Polynomial
+    flipPolynomialSign = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (-c) v)
 
-mulPolynomials :: Polynomial -> Polynomial -> Maybe Polynomial
-mulPolynomials p1 p2 = just
+mulPolynomials :: Polynomial -> Polynomial -> Polynomial
+mulPolynomials p1 p2 = folded
     where
       ts1 = Map.toList p1
       f :: (T.Text, PolynomialTerm) -> Polynomial -> Polynomial
-      f (_, term) ac = fromJust added
+      f (_, term) ac = added
         where
           pp = mulTermPolynomial term p2
           added = addPolynomials ac pp
       folded = foldr f zeroPolynomial ts1
-      just = Just folded
 
 polynomialByTerms :: [PolynomialTerm] -> Polynomial
 polynomialByTerms ts = Map.fromList (map (\t -> (polynomialTermSignature t, t)) ts)
@@ -126,23 +127,31 @@ printPolynomial p = case p of
       sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
       indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
+reduceEquation :: Equation ->  ExceptTT Polynomial
+reduceEquation (Equation lhs rhs) = do
+  reduceToPolynomial lhsAst
+  where
+    lhsAst = case rhs of
+      Num 0 -> lhs
+      _ -> Sub lhs rhs
+
 reduceToPolynomial :: AST -> ExceptTT Polynomial
-reduceToPolynomial (Num a) = polynomialByNum (Num a)
-reduceToPolynomial (Var n e) = polynomialByVar (Var n e)
+reduceToPolynomial n@(Num _) = polynomialByNum n
+reduceToPolynomial v@(Var _ _) = polynomialByVar v
 reduceToPolynomial (Add a b) = do
   sa <- reduceToPolynomial a
   sb <- reduceToPolynomial b
   let added = addPolynomials sa sb
-  return $ fromJust added
+  return added
 reduceToPolynomial (Sub a b) = do
   ra <- reduceToPolynomial a
   rb <- reduceToPolynomial b
   let r = subPolynomials ra rb
-  return $ fromJust r
+  return r
 reduceToPolynomial (Mul a b) = do
   ra <- reduceToPolynomial a
   rb <- reduceToPolynomial b
-  return $ fromJust $ mulPolynomials ra rb
+  return $ mulPolynomials ra rb
 -- 除算: いろいろ頑張る
 reduceToPolynomial (Div a b) = do
   sa <- reduceToPolynomial a
@@ -191,7 +200,7 @@ reduceToPolynomial (Pow a b) = do
       powPolynomial' :: Polynomial -> Polynomial -> Int -> Polynomial
       powPolynomial' p q n
         | n <= 0 = p
-        | otherwise = powPolynomial' (fromJust (mulPolynomials p q)) q (n - 1)
+        | otherwise = powPolynomial' (mulPolynomials p q) q (n - 1)
 
 data PolynomialInfo = PolynomialInfo {
   varSet :: Set.Set T.Text,

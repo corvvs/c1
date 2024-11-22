@@ -1,12 +1,11 @@
 module Main (main) where
 
 import System.Exit
-import Algebra
 import Lexer
 import MyPrint
-import Parser (Equation (Equation), parseEquation)
+import Parser
 import Polynomial
-import Solver
+import Solver 
 import System.Environment
 import qualified Data.Text as T
 import Control.Monad.Except
@@ -16,7 +15,7 @@ import Control.Monad.IO.Class (liftIO)
 showUsage :: IO ()
 showUsage = do
   path <- getProgName
-  putStrLn (Prelude.unwords ["Usage:", path, "<expression>"])
+  putStrLn (unwords ["Usage:", path, "<expression>"])
 
 solve :: T.Text -> IO ()
 solve expression = do -- IOコンテキスト
@@ -26,13 +25,12 @@ solve expression = do -- IOコンテキスト
     liftIO $ MyPrint.printLine "Tokens" $ T.pack $ show tokens
 
     equation <- parseEquation expression tokens
-    liftIO $ MyPrint.printLine "AST" $ T.pack $ show equation
+    liftIO $ MyPrint.printLine "Equation AST" $ T.pack $ show equation
 
-    (Equation lhsAst _) <- reduceEquation equation
-    polynomial <- reduceToPolynomial lhsAst
-    liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
+    lhs <- reduceEquation equation
+    liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial lhs, T.pack " = 0"]
 
-    result <- solveEquation polynomial
+    result <- solveEquation lhs
     liftIO $ result
 
   case result of

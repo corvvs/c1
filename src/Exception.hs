@@ -1,4 +1,4 @@
-module Exception(ExceptTT(..), throwError) where
+module Exception(ExceptTT, throwError) where
 
 import Control.Monad.Except
 import qualified Data.Text as T
