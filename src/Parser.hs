@@ -20,9 +20,9 @@ data ParseContext = ParseContext
 nc :: ParseContext -> Int -> ParseContext
 nc ctx n = let i = idx ctx in ctx {idx = i + n}
 
-sayError :: ParseContext -> String -> T.Text
+sayError :: ParseContext -> String -> ExceptTT a
 sayError ctx msg =
-  T.concat [T.pack "ParseError: ", combinedMsg]
+  throwError $ T.concat [T.pack "ParseError: ", combinedMsg]
   where
     combineMsg :: ParseContext -> String -> T.Text
     combineMsg ctx' msg' = T.concat [T.pack msg', T.pack "\n", emphasized, T.pack "\n"]
@@ -44,17 +44,17 @@ parseEquation expr ts = do
   parseEquation' ctx ts
 
 parseEquation' :: ParseContext -> [Token] -> ExceptTT Equation
-parseEquation' ctx [] = throwError $ sayError ctx "no tokens"
+parseEquation' ctx [] = sayError ctx "no tokens"
 parseEquation' ctx ts = case Prelude.break isEqual ts of
-  ([], _) -> throwError $ sayError ctx "Missing LHS"
-  (_, [TokEqual _]) -> throwError $ sayError ctx "Missing RHS"
+  ([], _) -> sayError ctx "Missing LHS"
+  (_, [TokEqual _]) -> sayError ctx "Missing RHS"
   (lhsTokens, TokEqual _ : rhsTokens) ->
     do
       (ctx', lhs) <- parseExpr ctx lhsTokens
       (_, rhs) <- parseExpr (nc ctx' 1) rhsTokens
       return $ Equation lhs rhs
-  (_, []) -> throwError $ sayError ctx "Missing \"=\""
-  _ -> throwError $ sayError ctx "Invalid equation format"
+  (_, []) -> sayError ctx "Missing \"=\""
+  _ -> sayError ctx "Invalid equation format"
   where
     isEqual :: Token -> Bool
     isEqual (TokEqual _) = True
@@ -66,7 +66,7 @@ parseExpr ctx ts = do
   (ctx', ast, rest) <- parseAddSub ctx ts
   if Prelude.null rest
     then return (ctx', ast)
-    else throwError $ sayError (nc ctx' 1) "Unexpected Extra Token(s)"
+    else sayError (nc ctx' 1) "Unexpected Extra Token(s)"
 
 -- 加算・減算を解析
 parseAddSub :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST, [Token])
@@ -109,7 +109,7 @@ parsePow' :: ParseContext -> AST -> [Token] -> ExceptTT (ParseContext, AST, [Tok
 parsePow' ctx base (TokPow _ : TokNum x pos : rest) = do
   (ctx', expo, _) <- parseTerm (nc ctx 1) [TokNum x pos]
   return (ctx', Pow base expo, rest)
-parsePow' ctx _ (TokPow _ : _) = throwError $ sayError (nc ctx 1) "Power(^) requires Number as Right Operand"
+parsePow' ctx _ (TokPow _ : _) = sayError (nc ctx 1) "Power(^) requires Number as Right Operand"
 parsePow' ctx base totsens = return (ctx, base, totsens)
 
 parseUnary :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST, [Token])
@@ -129,7 +129,7 @@ parseParen ctx (TokLParen _ : ts) = do
   (ctx'', subexpr, rest) <- parseAddSub ctx' ts
   case rest of
     (TokRParen _ : ts') -> return (nc ctx'' 1, subexpr, ts')
-    _ -> throwError $ sayError ctx' "Missing Closing Parenthesis(')') in Right Position"
+    _ -> sayError ctx' "Missing Closing Parenthesis(')') in Right Position"
 parseParen ctx ts = parseTerm ctx ts
 
 -- 単項（数値や変数）を解析
@@ -146,7 +146,7 @@ parseTerm ctx (TokIdent var _ : ts) =
   return (nc ctx 1, Var var 1, ts)
   
 -- まずいパターン
-parseTerm ctx (TokRParen _ : _) = throwError $ sayError (nc ctx 1) "Unexpected Closing Parenthesis(')')"
-parseTerm ctx (TokPow _ : _) = throwError $ sayError (nc ctx 1) "Power(^) requires Left Operand"
-parseTerm ctx (t : _) = throwError $ sayError ctx $ "Unexpected Token in this ParseContext: " ++ show t
-parseTerm ctx [] = throwError $ sayError ctx "Neither Number nor Variable Token"
+parseTerm ctx (TokRParen _ : _) = sayError (nc ctx 1) "Unexpected Closing Parenthesis(')')"
+parseTerm ctx (TokPow _ : _) = sayError (nc ctx 1) "Power(^) requires Left Operand"
+parseTerm ctx (t : _) = sayError ctx $ "Unexpected Token in this ParseContext: " ++ show t
+parseTerm ctx [] = sayError ctx "Neither Number nor Variable Token"

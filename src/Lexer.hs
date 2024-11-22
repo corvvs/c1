@@ -28,8 +28,9 @@ data Context = Context
 nc :: Context -> Int -> Context
 nc ctx n = ctx {idx = idx ctx + n}
 
-sayError :: Context -> T.Text -> T.Text
-sayError ctx msg = T.concat [T.pack "TokenizeError: ", msg, T.pack "\n", emphasized]
+sayError :: Context -> T.Text -> ExceptTT a
+sayError ctx msg =
+  throwError $ T.concat [T.pack "TokenizeError: ", msg, T.pack "\n", emphasized]
   where
     i = idx ctx
     emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
@@ -93,7 +94,7 @@ lexer_ ctx txt = case T.uncons txt of
         | c_ == '^' = addToken TokPow
         | c_ == '(' = addToken TokLParen
         | c_ == ')' = addToken TokRParen
-        | otherwise = throwError $ sayError ctx_ $ T.pack $ "Unexpected character: " ++ [c_]
+        | otherwise = sayError ctx_ $ T.pack $ "Unexpected character: " ++ [c_]
         where
           addToken tokCon = do
             (ctx', tokens) <- lexer_ (nc ctx_ 1) cs_
