@@ -6,6 +6,6 @@ import Parser (Equation (..))
 
 -- 与えられた方程式を, 右辺が 0 になるように変形する
 reduceEquation :: Equation ->  ExceptTT Equation
-reduceEquation (Equation lhs rhs) = case rhs of
-  Num 0 -> return $ Equation lhs rhs
-  _ -> return $ Equation (Sub lhs rhs) (Num 0)
+reduceEquation (Equation lhs rhs) = return $ case rhs of
+  Num 0 -> Equation lhs rhs
+  _ -> Equation (Sub lhs rhs) (Num 0)

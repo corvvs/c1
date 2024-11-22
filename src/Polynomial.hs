@@ -1,4 +1,4 @@
-module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomialI, inspectPolynomialInfo, isSolvable) where
+module Polynomial (PolynomialInfo(..), printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
 
 import AST (AST (..))
 import qualified Data.List as List
@@ -9,6 +9,9 @@ import Exception
 import qualified Data.Text as T
 import TypeClass (Addable (..), Multipliable (..), Divisible (..))
 import PolynomialBase
+
+sayError :: T.Text -> ExceptTT a
+sayError msg = throwError $ T.concat [T.pack "ReductionError: ", msg]
 
 polynomialVarSignature :: PolynomialVariable -> T.Text
 polynomialVarSignature var = joined
@@ -102,14 +105,14 @@ mulPolynomials p1 p2 = just
 polynomialByTerms :: [PolynomialTerm] -> Polynomial
 polynomialByTerms ts = Map.fromList (map (\t -> (polynomialTermSignature t, t)) ts)
 
-polynomialByNum :: AST -> Polynomial
-polynomialByNum (Num 0) = zeroPolynomial
-polynomialByNum (Num a) = Map.singleton T.empty (PolynomialTerm a Map.empty)
-polynomialByNum _ = error "Not a number"
+polynomialByNum :: AST -> ExceptTT Polynomial
+polynomialByNum (Num 0) = return zeroPolynomial
+polynomialByNum (Num a) = return $ Map.singleton T.empty (PolynomialTerm a Map.empty)
+polynomialByNum _ = sayError $ T.pack "Not a number"
 
-polynomialByVar :: AST -> Polynomial
-polynomialByVar (Var n e) = Map.singleton (polynomialVarSignature' n e) (PolynomialTerm 1 (Map.singleton n e))
-polynomialByVar _ = error "Not a variable"
+polynomialByVar :: AST -> ExceptTT Polynomial
+polynomialByVar (Var n e) = return $ Map.singleton (polynomialVarSignature' n e) (PolynomialTerm 1 (Map.singleton n e))
+polynomialByVar _ = sayError $ T.pack "Not a variable"
 
 polynomialSignature :: Polynomial -> T.Text
 polynomialSignature p = foldr (\(_, v) acc -> T.concat [polynomialTermSignature v, T.pack " ", acc]) T.empty (Map.toList p)
@@ -123,25 +126,33 @@ printPolynomial p = case p of
       sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
       indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
-reduceToPolynomialI :: AST -> ExceptTT Polynomial
-reduceToPolynomialI a = return (reduceToPolynomial a)
-
-reduceToPolynomial :: AST -> Polynomial
+reduceToPolynomial :: AST -> ExceptTT Polynomial
 reduceToPolynomial (Num a) = polynomialByNum (Num a)
 reduceToPolynomial (Var n e) = polynomialByVar (Var n e)
-reduceToPolynomial (Add a b) = fromJust added
-  where
-    sa = reduceToPolynomial a
-    sb = reduceToPolynomial b
-    added = addPolynomials sa sb
-reduceToPolynomial (Sub a b) = fromJust r
-  where
-    r = subPolynomials (reduceToPolynomial a) (reduceToPolynomial b)
-reduceToPolynomial (Mul a b) = fromJust r
-  where
-    r = mulPolynomials (reduceToPolynomial a) (reduceToPolynomial b)
+reduceToPolynomial (Add a b) = do
+  sa <- reduceToPolynomial a
+  sb <- reduceToPolynomial b
+  let added = addPolynomials sa sb
+  return $ fromJust added
+reduceToPolynomial (Sub a b) = do
+  ra <- reduceToPolynomial a
+  rb <- reduceToPolynomial b
+  let r = subPolynomials ra rb
+  return $ fromJust r
+reduceToPolynomial (Mul a b) = do
+  ra <- reduceToPolynomial a
+  rb <- reduceToPolynomial b
+  return $ fromJust $ mulPolynomials ra rb
 -- 除算: いろいろ頑張る
-reduceToPolynomial (Div a b) = r
+reduceToPolynomial (Div a b) = do
+  sa <- reduceToPolynomial a
+  sb <- reduceToPolynomial b
+
+  case sb of
+    sb' | isZero sb' -> sayError $ T.pack "Division by zero"
+    sb' | isConstant sb' -> return $ divideByConstant sa (getCoeffOfTerm sb' 0)
+    sb' | isMonomial sb' -> let d = dimensionOfPolynomial sb' in return $ divTermPolynomial sa (fromJust (getTerm sb' d))
+    _ -> sayError $ T.pack "Division by Polynomial is not supported"
   where
     isConstant :: Polynomial -> Bool
     isConstant p = dimensionOfPolynomial p == 0
@@ -155,17 +166,16 @@ reduceToPolynomial (Div a b) = r
     divideByConstant :: Polynomial -> Double -> Polynomial
     divideByConstant p n = Map.map (\(PolynomialTerm c v) -> PolynomialTerm (c / n) v) p
 
-    sa = reduceToPolynomial a
-    sb = reduceToPolynomial b
-
-    r = case sb of
-      sb' | isZero sb' -> error "Division by zero"
-      sb' | isConstant sb' -> divideByConstant sa (getCoeffOfTerm sb' 0)
-      sb' | isMonomial sb' -> let d = dimensionOfPolynomial sb' in divTermPolynomial sa (fromJust (getTerm sb' d))
-      _ -> error "Division by Polynomial is not supported"
-
 -- 冪乗: いろいろ頑張る
-reduceToPolynomial (Pow a b) = r
+reduceToPolynomial (Pow a b) = do
+    sa <- reduceToPolynomial a
+    sb <- reduceToPolynomial b
+    let a0 = getCoeffOfTerm sa 0
+    let b0 = getCoeffOfTerm sb 0
+    case (isConstant sa, isConstant sb) of
+      (_, False) -> sayError $ T.pack "Not supported1"
+      (True, _) -> polynomialByNum (Num (a0 ** b0))
+      (False, _) -> powPolynomial sa b0
     where
       isConstant :: Polynomial -> Bool
       isConstant p = dimensionOfPolynomial p == 0
@@ -173,25 +183,15 @@ reduceToPolynomial (Pow a b) = r
       isNonNegativeInteger :: Double -> Bool
       isNonNegativeInteger n = n >= 0 && n == fromIntegral (round n :: Integer)
 
-      powPolynomial :: Polynomial -> Double -> Polynomial
+      powPolynomial :: Polynomial -> Double -> ExceptTT Polynomial
       powPolynomial p n = if isNonNegativeInteger n
-          then powPolynomial' unitPolynomial p (round n)
-          else error "Not supported"
+          then return $ powPolynomial' unitPolynomial p (round n)
+          else sayError $ T.pack "Not supported"
 
       powPolynomial' :: Polynomial -> Polynomial -> Int -> Polynomial
       powPolynomial' p q n
         | n <= 0 = p
         | otherwise = powPolynomial' (fromJust (mulPolynomials p q)) q (n - 1)
-
-      sa = reduceToPolynomial a
-      sb = reduceToPolynomial b
-      a0 = getCoeffOfTerm sa 0
-      b0 = getCoeffOfTerm sb 0
-      r = case (isConstant sa, isConstant sb) of
-        (_, False) -> error "Not supported1"
-        (True, _) -> polynomialByNum (Num (a0 ** b0))
-        (False, _) -> powPolynomial sa b0
-    
 
 data PolynomialInfo = PolynomialInfo {
   varSet :: Set.Set T.Text,

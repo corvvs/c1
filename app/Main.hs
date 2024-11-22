@@ -27,7 +27,7 @@ solve expression = do -- IOコンテキスト
     liftIO $ MyPrint.printLine "AST" $ T.pack $ show equation
 
     (Equation lhsAst _) <- reduceEquation equation
-    polynomial <- reduceToPolynomialI lhsAst
+    polynomial <- reduceToPolynomial lhsAst
     liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
 
     pInfo <- inspectPolynomialInfo polynomial
