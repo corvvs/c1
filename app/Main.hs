@@ -40,7 +40,7 @@ solve expression = do -- IOコンテキスト
       else throwError $ T.pack ("This equation is not solvable. (" ++ T.unpack reason ++ ")")
 
   case result of
-      Left err -> TIO.putStrLn $ T.pack "Error: " <> err
+      Left err -> TIO.putStrLn $ err
       Right val -> solveEquation val
       -- Right val -> TIO.putStrLn $ T.pack "Final result: " <> T.pack (show val)
 

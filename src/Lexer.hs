@@ -1,7 +1,7 @@
 module Lexer (Token (..), lexer, tokenRange) where
 
-import Control.Monad.Except
 import qualified Data.Text as T
+import Exception
 import Data.Char (isDigit, isSpace)
 import MyPrint
 type TokenRange = (Int, Int)
@@ -28,11 +28,11 @@ data Context = Context
 nc :: Context -> Int -> Context
 nc ctx n = ctx {idx = idx ctx + n}
 
-sayError :: Context -> T.Text -> a
-sayError ctx msg = do
-  let i = idx ctx
-  let emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
-  error $ T.unpack $ T.concat [T.pack "TokenizeError: ", msg, T.pack "\n", emphasized]
+sayError :: Context -> T.Text -> T.Text
+sayError ctx msg = T.concat [T.pack "TokenizeError: ", msg, T.pack "\n", emphasized]
+  where
+    i = idx ctx
+    emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
 
 tokenRange :: Token -> TokenRange
 tokenRange (TokNum _ r) = r
@@ -46,31 +46,33 @@ tokenRange (TokPow r) = r
 tokenRange (TokLParen r) = r
 tokenRange (TokRParen r) = r
 
-lexer :: T.Text -> ExceptT T.Text IO [Token]
-lexer cs = let (_, tokens) = lexer_ (Context {expression = cs, idx = 0}) cs in return tokens
+lexer :: T.Text -> ExceptTT [Token]
+lexer cs = do
+  (_, tokens) <- lexer_ (Context {expression = cs, idx = 0}) cs
+  return tokens
 
-lexer_ :: Context -> T.Text -> (Context, [Token])
+lexer_ :: Context -> T.Text -> ExceptTT (Context, [Token])
 lexer_ ctx txt = case T.uncons txt of
-  Nothing -> (ctx, [])
+  Nothing -> return (ctx, [])
   Just (c, cs) -> lexer__ ctx (c, cs, txt)
     where
       i = idx ctx
 
       -- 数字を解析するヘルパー関数
-      lexNum :: Context -> T.Text -> (Context, [Token])
-      lexNum ctx_ cs_ = (ctx'', TokNum (read(T.unpack numStr)) (idx ctx_, idx ctx') : tokens)
-        where
-          (numStr, rest) = T.span (\c' -> isDigit c' || c' == '.') cs_
-          ctx' = nc ctx_ (T.length numStr)
-          (ctx'', tokens) = lexer_ ctx' rest
+      lexNum :: Context -> T.Text -> ExceptTT (Context, [Token])
+      lexNum ctx_ cs_ = do
+        let (numStr, rest) = T.span (\c' -> isDigit c' || c' == '.') cs_
+        let ctx' = nc ctx_ (T.length numStr)
+        (ctx'', tokens) <- lexer_ ctx' rest
+        return (ctx'', TokNum (read(T.unpack numStr)) (idx ctx_, idx ctx') : tokens)
 
       -- 識別子を解析するヘルパー関数
-      lexIdent :: Context -> T.Text -> (Context, [Token])
-      lexIdent ctx_ cs_ = (ctx'', TokIdent identStr (idx ctx_, idx ctx') : tokens)
-        where
-          (identStr, rest) = T.span isVarChar cs_
-          ctx' = nc ctx_ (T.length identStr)
-          (ctx'', tokens) = lexer_ ctx' rest
+      lexIdent :: Context -> T.Text -> ExceptTT (Context, [Token])
+      lexIdent ctx_ cs_ = do
+        let (identStr, rest) = T.span isVarChar cs_
+        let ctx' = nc ctx_ (T.length identStr)
+        (ctx'', tokens) <- lexer_ ctx' rest
+        return (ctx'', TokIdent identStr (idx ctx_, idx ctx') : tokens)
 
       isSymbol :: Char -> Bool
       isSymbol c_ = c_ `elem` ['=', '+', '-', '*', '/', '^', '(', ')']
@@ -78,17 +80,21 @@ lexer_ ctx txt = case T.uncons txt of
       isVarChar :: Char -> Bool
       isVarChar c_ = not (isSpace c_ || isDigit c_ || isSymbol c_)
 
-      lexer__ :: Context -> (Char, T.Text, T.Text) -> (Context, [Token])
+      lexer__ :: Context -> (Char, T.Text, T.Text) -> ExceptTT (Context, [Token])
       lexer__ ctx_ (c_, cs_, txt_)
         | isSpace c_ = lexer_ (nc ctx_ 1) cs_ -- 空白は無視
         | isVarChar c_ = lexIdent ctx_ txt_ -- 識別子のトークン化
         | isDigit c_ = lexNum ctx_ txt_ -- 数値のトークン化
-        | c_ == '=' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokEqual (i, i + 1) : tokens) -- '=' 演算子
-        | c_ == '+' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokPlus (i, i + 1) : tokens) -- '+' 演算子
-        | c_ == '-' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokMinus (i, i + 1) : tokens) -- '-' 演算子
-        | c_ == '*' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokMul (i, i + 1) : tokens) -- '*' 演算子
-        | c_ == '/' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokDiv (i, i + 1) : tokens) -- '/' 演算子
-        | c_ == '^' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokPow (i, i + 1) : tokens) -- '^' 演算子
-        | c_ == '(' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokLParen (i, i + 1) : tokens) -- '(' 演算子
-        | c_ == ')' = let (ctx', tokens) = lexer_ (nc ctx_ 1) cs_ in (ctx', TokRParen (i, i + 1) : tokens) -- ')' 演算子
-        | otherwise = sayError ctx_ $ T.pack $ "Unexpected character: " ++ [c_]
+        | c_ == '=' = addToken TokEqual
+        | c_ == '+' = addToken TokPlus
+        | c_ == '-' = addToken TokMinus
+        | c_ == '*' = addToken TokMul
+        | c_ == '/' = addToken TokDiv
+        | c_ == '^' = addToken TokPow
+        | c_ == '(' = addToken TokLParen
+        | c_ == ')' = addToken TokRParen
+        | otherwise = throwError $ sayError ctx_ $ T.pack $ "Unexpected character: " ++ [c_]
+        where
+          addToken tokCon = do
+            (ctx', tokens) <- lexer_ (nc ctx_ 1) cs_
+            return (ctx', tokCon (i, i + 1) : tokens)

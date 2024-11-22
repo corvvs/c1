@@ -5,7 +5,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import qualified Data.Set as Set
-import Control.Monad.Except
+import Exception
 import qualified Data.Text as T
 import TypeClass (Addable (..), Multipliable (..), Divisible (..))
 import PolynomialBase
@@ -123,7 +123,7 @@ printPolynomial p = case p of
       sortedTerms = List.sortBy (\t1 t2 -> compare (dimensionOfTerm t1) (dimensionOfTerm t2)) terms
       indexedTerms = zipWith polynomialTermPrint [0 ..] sortedTerms
 
-reduceToPolynomialI :: AST -> ExceptT T.Text IO Polynomial
+reduceToPolynomialI :: AST -> ExceptTT Polynomial
 reduceToPolynomialI a = return (reduceToPolynomial a)
 
 reduceToPolynomial :: AST -> Polynomial
@@ -200,7 +200,7 @@ data PolynomialInfo = PolynomialInfo {
 }
   deriving (Show)
 
-inspectPolynomialInfo :: Polynomial -> ExceptT T.Text IO PolynomialInfo
+inspectPolynomialInfo :: Polynomial -> ExceptTT PolynomialInfo
 inspectPolynomialInfo p = return PolynomialInfo {
     varSet = polynomialVarSet p,
     maxDimension = dimensionOfPolynomial p,
@@ -210,7 +210,7 @@ inspectPolynomialInfo p = return PolynomialInfo {
 -- 多項式がサポート範囲内かどうかを判定する. つまり:
 -- - 文字1種類以下
 -- - 次数2以下
-isSolvable :: PolynomialInfo -> ExceptT T.Text IO (Bool, T.Text)
+isSolvable :: PolynomialInfo -> ExceptTT (Bool, T.Text)
 isSolvable p = return $ case (s, maxD, minD) of
     _ | Set.size s > 1 -> (False, T.pack "Too many variables")
     _ | maxD > 3 -> (False, T.pack "Too large dimension")
