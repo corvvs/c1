@@ -27,6 +27,7 @@ library
   exposed-modules:
       Algebra
       AST
+      Exception
       Lexer
       MyPrint
       Parser
