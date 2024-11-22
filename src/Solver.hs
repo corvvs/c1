@@ -3,21 +3,35 @@ module Solver (solveEquation) where
 import qualified Data.Text as T
 import MyPrint
 import PolynomialBase
+import Polynomial
+import Exception
 import qualified Data.Complex as C
+import Control.Monad.IO.Class (liftIO)
 -- import Debug.Trace
 
-solveEquation :: Polynomial -> IO ()
-solveEquation p = do
-  let a3 = getCoeffOfTerm p 3
-  let a2 = getCoeffOfTerm p 2
-  let a1 = getCoeffOfTerm p 1
-  let a0 = getCoeffOfTerm p 0
+sayError :: T.Text -> ExceptTT a
+sayError msg = throwError $ T.concat [T.pack "SolverError: ", msg]
 
-  case (a3, a2, a1, a0) of
-    (0, 0, 0, _) -> solveEquation0 a0
-    (0, 0, _, _) -> solveEquation1 a1 a0
-    (0, _, _, _) -> solveEquation2 a2 a1 a0
-    (_, _, _, _) -> solveEquation3 a3 a2 a1 a0
+solveEquation :: Polynomial -> ExceptTT (IO ())
+solveEquation p = do
+  let pInfo = inspectPolynomialInfo p
+  let maxD = maxDimension pInfo
+  liftIO $ MyPrint.printLine "Dimension" $ T.pack $ show maxD
+
+  (f, reason) <- isSolvable pInfo
+  if not f
+    then sayError $ T.pack ("This equation is not solvable. (" ++ T.unpack reason ++ ")")
+    else do
+      let a3 = getCoeffOfTerm p 3
+      let a2 = getCoeffOfTerm p 2
+      let a1 = getCoeffOfTerm p 1
+      let a0 = getCoeffOfTerm p 0
+
+      return $ case (a3, a2, a1, a0) of
+        (0, 0, 0, _) -> solveEquation0 a0
+        (0, 0, _, _) -> solveEquation1 a1 a0
+        (0, _, _, _) -> solveEquation2 a2 a1 a0
+        (_, _, _, _) -> solveEquation3 a3 a2 a1 a0
 
 -- "0次方程式" c = 0 を解く
 solveEquation0 :: Double -> IO ()

@@ -200,8 +200,8 @@ data PolynomialInfo = PolynomialInfo {
 }
   deriving (Show)
 
-inspectPolynomialInfo :: Polynomial -> ExceptTT PolynomialInfo
-inspectPolynomialInfo p = return PolynomialInfo {
+inspectPolynomialInfo :: Polynomial -> PolynomialInfo
+inspectPolynomialInfo p = PolynomialInfo {
     varSet = polynomialVarSet p,
     maxDimension = dimensionOfPolynomial p,
     minDimension = minDemensionOfPolynomial p

@@ -1,5 +1,6 @@
 module Main (main) where
 
+import System.Exit
 import Algebra
 import Lexer
 import MyPrint
@@ -19,7 +20,8 @@ showUsage = do
 
 solve :: T.Text -> IO ()
 solve expression = do -- IOコンテキスト
-  result <- runExceptT $ do -- ExceptTコンテキスト
+  result <- runExceptT $ do -- ExceptT(ExceptTT)コンテキスト
+
     tokens <- lexer expression
     liftIO $ MyPrint.printLine "Tokens" $ T.pack $ show tokens
 
@@ -30,19 +32,14 @@ solve expression = do -- IOコンテキスト
     polynomial <- reduceToPolynomial lhsAst
     liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
 
-    pInfo <- inspectPolynomialInfo polynomial
-    let maxD = maxDimension pInfo
-    liftIO $ MyPrint.printLine "Dimension" $ T.pack $ show maxD
-
-    (solvable, reason) <- isSolvable pInfo
-    if solvable
-      then return polynomial
-      else throwError $ T.pack ("This equation is not solvable. (" ++ T.unpack reason ++ ")")
+    result <- solveEquation polynomial
+    liftIO $ result
 
   case result of
-      Left err -> TIO.putStrLn $ err
-      Right val -> solveEquation val
-      -- Right val -> TIO.putStrLn $ T.pack "Final result: " <> T.pack (show val)
+      Left err -> do
+        TIO.putStrLn $ err
+        exitWith (ExitFailure 1)
+      Right _ -> return ()
 
 main :: IO ()
 main = do
