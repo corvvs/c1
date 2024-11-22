@@ -1,47 +1,43 @@
 module Main (main) where
 
-import Algebra
+import System.Exit
 import Lexer
 import MyPrint
-import Parser (Equation (Equation), parseEquation)
+import Parser
 import Polynomial
-import Solver
+import Solver 
 import System.Environment
 import qualified Data.Text as T
+import Control.Monad.Except
+import qualified Data.Text.IO as TIO
+import Control.Monad.IO.Class (liftIO)
 
 showUsage :: IO ()
 showUsage = do
   path <- getProgName
-  putStrLn (Prelude.unwords ["Usage:", path, "<expression>"])
-
-printEquation :: Equation -> IO ()
-printEquation (Equation lhs rhs) = do
-  let pl = reduceToPolynomial lhs
-  let pr = reduceToPolynomial rhs
-  MyPrint.printLine "Raw form" $ T.concat [printPolynomial pl, T.pack " = ", printPolynomial pr]
+  putStrLn (unwords ["Usage:", path, "<expression>"])
 
 solve :: T.Text -> IO ()
-solve expression = do
-  let tokens = lexer expression
-  MyPrint.printLine "Tokens" $ T.pack $ show tokens
+solve expression = do -- IOコンテキスト
+  result <- runExceptT $ do -- ExceptT(ExceptTT)コンテキスト
 
-  let equation = parseEquation expression tokens
-  MyPrint.printLine "AST" $ T.pack $ show equation
-  printEquation equation
+    tokens <- lexer expression
+    liftIO $ MyPrint.printLine "Tokens" $ T.pack $ show tokens
 
-  let (Equation lhsAst _) = reduceEquation equation
-  let polynomial = reduceToPolynomial lhsAst
-  MyPrint.printLine "Reduced form" $ T.concat [printPolynomial polynomial, T.pack " = 0"]
+    equation <- parseEquation expression tokens
+    liftIO $ MyPrint.printLine "Equation AST" $ T.pack $ show equation
 
-  let pInfo = inspectPolynomialInfo polynomial
-  let maxD = maxDimension pInfo
-  MyPrint.printLine "Dimension" $ T.pack $ show maxD
+    lhs <- reduceEquation equation
+    liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial lhs, T.pack " = 0"]
 
-  let (solvable, reason) = isSolvable pInfo
-  if solvable
-    then do
-      solveEquation polynomial
-    else putStrLn ("This equation is not solvable. (" ++ T.unpack reason ++ ")")
+    result <- solveEquation lhs
+    liftIO $ result
+
+  case result of
+      Left err -> do
+        TIO.putStrLn $ err
+        exitWith (ExitFailure 1)
+      Right _ -> return ()
 
 main :: IO ()
 main = do

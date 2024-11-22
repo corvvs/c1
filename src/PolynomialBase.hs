@@ -84,8 +84,8 @@ divVar t1 t2 = Map.filter (/= 0) added
 
 -- 項同士の和
 instance Addable PolynomialTerm where
-  add :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
-  add (PolynomialTerm c1 v1) (PolynomialTerm c2 v2)
+  (<+>) :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
+  (<+>) (PolynomialTerm c1 v1) (PolynomialTerm c2 v2)
     | c1 == 0 = Just (PolynomialTerm c2 v2)
     | c2 == 0 = Just (PolynomialTerm c1 v1)
     | v1 == v2 = Just (PolynomialTerm (c1 + c2) v1)
@@ -93,8 +93,8 @@ instance Addable PolynomialTerm where
 
 -- 項同士の差
 instance Subtractable PolynomialTerm where
-  sub :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
-  sub (PolynomialTerm c1 v1) (PolynomialTerm c2 v2)
+  (<->) :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
+  (<->) (PolynomialTerm c1 v1) (PolynomialTerm c2 v2)
     | c1 == 0 = Just (PolynomialTerm (-c2) v2)
     | c2 == 0 = Just (PolynomialTerm c1 v1)
     | v1 == v2 = Just (PolynomialTerm (c1 - c2) v1)
@@ -102,14 +102,14 @@ instance Subtractable PolynomialTerm where
 
 -- 項同士の積
 instance Multipliable PolynomialTerm where
-  mul :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
-  mul (PolynomialTerm 0 _) _ = Just zeroTerm
-  mul _ (PolynomialTerm 0 _) = Just zeroTerm
-  mul (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 * c2) (mulVar v1 v2))
+  (<**>) :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
+  (<**>) (PolynomialTerm 0 _) _ = Just zeroTerm
+  (<**>) _ (PolynomialTerm 0 _) = Just zeroTerm
+  (<**>) (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 * c2) (mulVar v1 v2))
 
 -- 項同士の商
 instance Divisible PolynomialTerm where
-  div :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
-  div (PolynomialTerm 0 _) _ = Just zeroTerm
-  div _ (PolynomialTerm 0 _) = error "Zero Division"
-  div (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 / c2) (divVar v1 v2))
+  (</>) :: PolynomialTerm -> PolynomialTerm -> Maybe PolynomialTerm
+  (</>) (PolynomialTerm 0 _) _ = Just zeroTerm
+  (</>) _ (PolynomialTerm 0 _) = error "Zero Division"
+  (</>) (PolynomialTerm c1 v1) (PolynomialTerm c2 v2) = Just (PolynomialTerm (c1 / c2) (divVar v1 v2))
