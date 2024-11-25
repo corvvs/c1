@@ -106,8 +106,8 @@ parsePow ctx ts = do
   parsePow' ctx' base rest
 
 parsePow' :: ParseContext -> AST -> [Token] -> ExceptTT (ParseContext, AST, [Token])
-parsePow' ctx base (TokPow _ : TokNum x pos : rest) = do
-  (ctx', expo, _) <- parseTerm (nc ctx 1) [TokNum x pos]
+parsePow' ctx base (TokPow _ : n@(TokNum _ _) : rest) = do
+  (ctx', expo, _) <- parseTerm (nc ctx 1) [n]
   return (ctx', Pow base expo, rest)
 parsePow' ctx _ (TokPow _ : _) = sayError (nc ctx 1) "Power(^) requires Number as Right Operand"
 parsePow' ctx base totsens = return (ctx, base, totsens)
@@ -137,10 +137,17 @@ parseTerm :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST, [Token])
 -- 数値
 parseTerm ctx (TokNum n _ : ts) = return (nc ctx 1, Num n, ts)
 -- 変数（X ^ n）
-parseTerm ctx (TokIdent var _ : TokPow _ : TokNum expo _ : ts) =
-  if expo == 0
-    then return (nc ctx 3, Num 1, ts)
-    else return (nc ctx 3, Var var (round expo), ts)
+parseTerm ctx (TokIdent var _ : TokPow _ : TokNum expo _ : ts) = do
+  if not (isInteger expo)
+    then sayError (nc ctx 3) "Exponent must be an Integer"
+    else do
+      if expo == 0
+        then return (nc ctx 3, Num 1, ts)
+        else return (nc ctx 3, Var var (round expo), ts)
+  where
+    isInteger :: Double -> Bool
+    isInteger x = fromIntegral (floor x :: Integer) == x
+
 -- 変数（X）
 parseTerm ctx (TokIdent var _ : ts) =
   return (nc ctx 1, Var var 1, ts)
