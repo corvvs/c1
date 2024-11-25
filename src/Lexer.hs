@@ -59,13 +59,33 @@ lexer_ ctx txt = case T.uncons txt of
     where
       i = idx ctx
 
+      isSymbol :: Char -> Bool
+      isSymbol c_ = c_ `elem` ['=', '+', '-', '*', '/', '^', '(', ')', '.', '%', '&', '@']
+
+      isVarChar :: Char -> Bool
+      isVarChar c_ = not (isSpace c_ || isDigit c_ || isSymbol c_)
+
       -- 数字を解析するヘルパー関数
       lexNum :: Context -> T.Text -> ExceptTT (Context, [Token])
       lexNum ctx_ cs_ = do
-        let (numStr, rest) = T.span (\c' -> isDigit c' || c' == '.') cs_
-        let ctx' = nc ctx_ (T.length numStr)
-        (ctx'', tokens) <- lexer_ ctx' rest
-        return (ctx'', TokNum (read(T.unpack numStr)) (idx ctx_, idx ctx') : tokens)
+        let (numText, rest) = T.span (\c' -> isDigit c' || c' == '.') cs_
+        let numStr = T.unpack numText
+        case findNthChar numStr '.' of
+          Just i_ -> sayError (nc ctx_ i_) $ T.pack $ "Unexpected character: " ++ [numStr !! i_]
+          Nothing -> do
+            if last numStr == '.'
+              then sayError (nc ctx_ (T.length numText - 1)) $ T.pack $ "Unexpected character: " ++ [last numStr]
+              else do
+                let ctx' = nc ctx_ (T.length numText)
+                (ctx'', tokens) <- lexer_ ctx' rest
+                return (ctx'', TokNum (read numStr) (idx ctx_, idx ctx') : tokens)
+        where
+          findNthChar :: String -> Char -> Maybe Int
+          findNthChar str c_ = do
+            let idxs = filter (\i_ -> str !! i_ == c_) [0 .. length str - 1]
+            if length idxs < 2
+              then Nothing
+              else Just $ head $ tail idxs
 
       -- 識別子を解析するヘルパー関数
       lexIdent :: Context -> T.Text -> ExceptTT (Context, [Token])
@@ -75,11 +95,6 @@ lexer_ ctx txt = case T.uncons txt of
         (ctx'', tokens) <- lexer_ ctx' rest
         return (ctx'', TokIdent identStr (idx ctx_, idx ctx') : tokens)
 
-      isSymbol :: Char -> Bool
-      isSymbol c_ = c_ `elem` ['=', '+', '-', '*', '/', '^', '(', ')']
-
-      isVarChar :: Char -> Bool
-      isVarChar c_ = not (isSpace c_ || isDigit c_ || isSymbol c_)
 
       lexer__ :: Context -> (Char, T.Text, T.Text) -> ExceptTT (Context, [Token])
       lexer__ ctx_ (c_, cs_, txt_)
