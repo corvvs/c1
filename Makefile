@@ -3,6 +3,9 @@ NAME		:= computor
 .PHONY:		all
 all:		$(NAME)
 
+setup:
+	stack setup --install-ghc
+
 $(NAME): build
 	stack install
 
