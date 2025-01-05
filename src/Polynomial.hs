@@ -1,5 +1,6 @@
-module Polynomial (PolynomialInfo(..), reduceEquation, printPolynomial, polynomialSignature, reduceToPolynomial, inspectPolynomialInfo, isSolvable) where
+module Polynomial (PolynomialInfo(..), reduceEquation, printPolynomial, inspectPolynomialInfo, isSolvable) where
 
+import Control.Monad (when)
 import AST (AST (..))
 import qualified Data.List as List
 import qualified Data.Map as Map
@@ -115,9 +116,6 @@ polynomialByVar :: AST -> ExceptTT Polynomial
 polynomialByVar (Var n e) = return $ Map.singleton (polynomialVarSignature' n e) (PolynomialTerm 1 (Map.singleton n e))
 polynomialByVar _ = sayError $ T.pack "Not a variable"
 
-polynomialSignature :: Polynomial -> T.Text
-polynomialSignature p = foldr (\(_, v) acc -> T.concat [polynomialTermSignature v, T.pack " ", acc]) T.empty (Map.toList p)
-
 printPolynomial :: Polynomial -> T.Text
 printPolynomial p = case p of
   p' | Map.null p' -> T.pack "0"
@@ -182,9 +180,16 @@ reduceToPolynomial (Pow a b) = do
     let a0 = getCoeffOfTerm sa 0
     let b0 = getCoeffOfTerm sb 0
     case (isConstant sa, isConstant sb) of
-      (_, False) -> sayError $ T.pack "Not supported1"
-      (True, _) -> polynomialByNum (Num (a0 ** b0))
-      (False, _) -> powPolynomial sa b0
+      (_, False) ->
+          -- 変数による冪乗はサポートしない
+          sayError $ T.pack "Not supported"
+      (True, True) -> do
+          -- 定数の定数乗 -> 0^0 以外は普通に計算する
+          when (a0 == 0 && b0 == 0) $ sayError $ T.pack "0^0 is not defined"
+          polynomialByNum (Num (a0 ** b0))
+      (False, True) ->
+          -- 変数の定数乗
+          powPolynomial sa b0
     where
       isConstant :: Polynomial -> Bool
       isConstant p = dimensionOfPolynomial p == 0

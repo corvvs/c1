@@ -24,6 +24,14 @@ fclean:		clean
 .PHONY:		re
 re:			fclean all
 
+.PHONY:		test
+test:
+	ruby test.rb
+
+.PHONY:		testm
+testm:
+	ruby test.rb > test.log
+
 .PHONY:	up
 up:
 	docker-compose up --build -d

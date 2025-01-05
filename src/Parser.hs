@@ -1,5 +1,6 @@
 module Parser (parseEquation, AST (..), Equation (..)) where
 
+import Control.Monad (when)
 import Exception
 import qualified Data.Text as T
 import AST (AST (..))
@@ -46,15 +47,18 @@ parseEquation expr ts = do
 parseEquation' :: ParseContext -> [Token] -> ExceptTT Equation
 parseEquation' ctx [] = sayError ctx "no tokens"
 parseEquation' ctx ts = case Prelude.break isEqual ts of
-  ([], _) -> sayError ctx "Missing LHS"
-  (_, [TokEqual _]) -> sayError ctx "Missing RHS"
-  (lhsTokens, TokEqual _ : rhsTokens) ->
-    do
-      (ctx', lhs) <- parseExpr ctx lhsTokens
-      (_, rhs) <- parseExpr (nc ctx' 1) rhsTokens
-      return $ Equation lhs rhs
-  (_, []) -> sayError ctx "Missing \"=\""
-  _ -> sayError ctx "Invalid equation format"
+  ([], _) ->
+    sayError ctx "Missing LHS"
+  (_, [TokEqual _]) ->
+    sayError ctx "Missing RHS"
+  (lhsTokens, TokEqual _ : rhsTokens) -> do
+    (ctx', lhs) <- parseExpr ctx lhsTokens
+    (_, rhs) <- parseExpr (nc ctx' 1) rhsTokens
+    return $ Equation lhs rhs
+  (_, []) ->
+    sayError ctx "Missing \"=\""
+  _ ->
+    sayError ctx "Invalid equation format" -- 到達しないはず
   where
     isEqual :: Token -> Bool
     isEqual (TokEqual _) = True
@@ -64,9 +68,9 @@ parseEquation' ctx ts = case Prelude.break isEqual ts of
 parseExpr :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST)
 parseExpr ctx ts = do
   (ctx', ast, rest) <- parseAddSub ctx ts
-  if Prelude.null rest
-    then return (ctx', ast)
-    else sayError (nc ctx' 1) "Unexpected Extra Token(s)"
+  when (not $ Prelude.null rest) $
+    sayError (nc ctx' 1) "Unexpected Extra Token(s)"
+  return (ctx', ast)
 
 -- 加算・減算を解析
 parseAddSub :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST, [Token])
@@ -138,12 +142,11 @@ parseTerm :: ParseContext -> [Token] -> ExceptTT (ParseContext, AST, [Token])
 parseTerm ctx (TokNum n _ : ts) = return (nc ctx 1, Num n, ts)
 -- 変数（X ^ n）
 parseTerm ctx (TokIdent var _ : TokPow _ : TokNum expo _ : ts) = do
-  if not (isInteger expo)
-    then sayError (nc ctx 3) "Exponent must be an Integer"
-    else do
-      if expo == 0
-        then return (nc ctx 3, Num 1, ts)
-        else return (nc ctx 3, Var var (round expo), ts)
+  when (not (isInteger expo)) $
+    sayError (nc ctx 3) "Exponent must be an Integer"
+  if expo == 0
+    then return (nc ctx 3, Num 1, ts)
+    else return (nc ctx 3, Var var (round expo), ts)
   where
     isInteger :: Double -> Bool
     isInteger x = fromIntegral (floor x :: Integer) == x

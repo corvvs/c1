@@ -1,4 +1,4 @@
-module Lexer (Token (..), lexer, tokenRange) where
+module Lexer (Token (..), lexEquation, tokenRange) where
 
 import qualified Data.Text as T
 import Exception
@@ -28,9 +28,9 @@ data Context = Context
 nc :: Context -> Int -> Context
 nc ctx n = ctx {idx = idx ctx + n}
 
-sayError :: Context -> T.Text -> ExceptTT a
+sayError :: Context -> String -> ExceptTT a
 sayError ctx msg =
-  throwError $ T.concat [T.pack "TokenizeError: ", msg, T.pack "\n", emphasized]
+  throwError $ T.concat [T.pack "TokenizeError: ", T.pack msg, T.pack "\n", emphasized]
   where
     i = idx ctx
     emphasized = MyPrint.emphasis (expression ctx) (i, i + 1)
@@ -47,70 +47,75 @@ tokenRange (TokPow r) = r
 tokenRange (TokLParen r) = r
 tokenRange (TokRParen r) = r
 
-lexer :: T.Text -> ExceptTT [Token]
-lexer cs = do
-  (_, tokens) <- lexer_ (Context {expression = cs, idx = 0}) cs
+lexEquation :: T.Text -> ExceptTT [Token]
+lexEquation cs = do
+  (_, tokens) <- lex_ (Context {expression = cs, idx = 0}) cs
   return tokens
 
-lexer_ :: Context -> T.Text -> ExceptTT (Context, [Token])
-lexer_ ctx txt = case T.uncons txt of
-  Nothing -> return (ctx, [])
-  Just (c, cs) -> lexer__ ctx (c, cs, txt)
+-- lexer 本体
+lex_ :: Context -> T.Text -> ExceptTT (Context, [Token])
+lex_ ctx givenInput = case T.uncons givenInput of
+  Nothing -> return (ctx, []) -- 入力文字列が空だったら, 空のトークン列を返す
+  Just (headChar, restChars) -> lex__ ctx (headChar, restChars, givenInput) -- 入力文字列が空でなければ字句解析を行う
     where
       i = idx ctx
 
       isSymbol :: Char -> Bool
-      isSymbol c_ = c_ `elem` ['=', '+', '-', '*', '/', '^', '(', ')', '.', '%', '&', '@']
+      isSymbol c' = c' `elem` ['=', '+', '-', '*', '/', '^', '(', ')', '.', '%', '&', '@']
 
-      isVarChar :: Char -> Bool
-      isVarChar c_ = not (isSpace c_ || isDigit c_ || isSymbol c_)
+      isIdentifierChar :: Char -> Bool
+      isIdentifierChar c' = not (isSpace c' || isDigit c' || isSymbol c')
 
       -- 数字を解析するヘルパー関数
       lexNum :: Context -> T.Text -> ExceptTT (Context, [Token])
-      lexNum ctx_ cs_ = do
-        let (numText, rest) = T.span (\c' -> isDigit c' || c' == '.') cs_
-        let numStr = T.unpack numText
-        case findNthChar numStr '.' of
-          Just i_ -> sayError (nc ctx_ i_) $ T.pack $ "Unexpected character: " ++ [numStr !! i_]
+      lexNum ctx_ restChars_ = do
+        let (prefixNumText, rest) = T.span (\c' -> isDigit c' || c' == '.') restChars_
+        -- NOTE: prefixNumText が空でないことが呼び出し元で保証される
+        let prefixNumStr = T.unpack prefixNumText
+        
+        case findIndexOf2nd prefixNumStr '.' of
+          Just i_ ->
+            sayError (nc ctx_ i_) $ "Unexpected character: " ++ [prefixNumStr !! i_]
           Nothing -> do
-            if last numStr == '.'
-              then sayError (nc ctx_ (T.length numText - 1)) $ T.pack $ "Unexpected character: " ++ [last numStr]
-              else do
-                let ctx' = nc ctx_ (T.length numText)
-                (ctx'', tokens) <- lexer_ ctx' rest
-                return (ctx'', TokNum (read numStr) (idx ctx_, idx ctx') : tokens)
+            case last prefixNumStr of
+              dot@'.' ->
+                sayError (nc ctx_ (T.length prefixNumText - 1)) $ "Unexpected character: " ++ [dot]
+              _ -> do
+                -- . が存在する場合は高々1つ, かつ位置が先頭/末尾以外であればOK
+                let ctx' = nc ctx_ (T.length prefixNumText)
+                (ctx'', tokens) <- lex_ ctx' rest
+                return (ctx'', TokNum (read prefixNumStr) (idx ctx_, idx ctx') : tokens)
         where
-          findNthChar :: String -> Char -> Maybe Int
-          findNthChar str c_ = do
-            let idxs = filter (\i_ -> str !! i_ == c_) [0 .. length str - 1]
-            if length idxs < 2
-              then Nothing
-              else Just $ head $ tail idxs
+          findIndexOf2nd :: String -> Char -> Maybe Int
+          findIndexOf2nd str c' = do
+            let idxs = filter (\i_ -> str !! i_ == c') [0 .. length str - 1]
+            if length idxs >= 2
+              then Just $ idxs !! 1
+              else Nothing
 
       -- 識別子を解析するヘルパー関数
-      lexIdent :: Context -> T.Text -> ExceptTT (Context, [Token])
-      lexIdent ctx_ cs_ = do
-        let (identStr, rest) = T.span isVarChar cs_
+      lexIdentifier :: Context -> T.Text -> ExceptTT (Context, [Token])
+      lexIdentifier ctx_ restChars_ = do
+        let (identStr, rest) = T.span isIdentifierChar restChars_
         let ctx' = nc ctx_ (T.length identStr)
-        (ctx'', tokens) <- lexer_ ctx' rest
+        (ctx'', tokens) <- lex_ ctx' rest
         return (ctx'', TokIdent identStr (idx ctx_, idx ctx') : tokens)
 
-
-      lexer__ :: Context -> (Char, T.Text, T.Text) -> ExceptTT (Context, [Token])
-      lexer__ ctx_ (c_, cs_, txt_)
-        | isSpace c_ = lexer_ (nc ctx_ 1) cs_ -- 空白は無視
-        | isVarChar c_ = lexIdent ctx_ txt_ -- 識別子のトークン化
-        | isDigit c_ = lexNum ctx_ txt_ -- 数値のトークン化
-        | c_ == '=' = addToken TokEqual
-        | c_ == '+' = addToken TokPlus
-        | c_ == '-' = addToken TokMinus
-        | c_ == '*' = addToken TokMul
-        | c_ == '/' = addToken TokDiv
-        | c_ == '^' = addToken TokPow
-        | c_ == '(' = addToken TokLParen
-        | c_ == ')' = addToken TokRParen
-        | otherwise = sayError ctx_ $ T.pack $ "Unexpected character: " ++ [c_]
+      lex__ :: Context -> (Char, T.Text, T.Text) -> ExceptTT (Context, [Token])
+      lex__ ctx_ (headChar_, restChars_, given_input_)
+        | isSpace headChar_ = lex_ (nc ctx_ 1) restChars_ -- 空白は無視
+        | isIdentifierChar headChar_ = lexIdentifier ctx_ given_input_ -- 識別子のトークン化
+        | isDigit headChar_ = lexNum ctx_ given_input_ -- 数値のトークン化
+        | headChar_ == '=' = addOpToken TokEqual -- 各種演算子のトークン化
+        | headChar_ == '+' = addOpToken TokPlus
+        | headChar_ == '-' = addOpToken TokMinus
+        | headChar_ == '*' = addOpToken TokMul
+        | headChar_ == '/' = addOpToken TokDiv
+        | headChar_ == '^' = addOpToken TokPow
+        | headChar_ == '(' = addOpToken TokLParen
+        | headChar_ == ')' = addOpToken TokRParen
+        | otherwise = sayError ctx_ $ "Unexpected character: " ++ [headChar_]
         where
-          addToken tokCon = do
-            (ctx', tokens) <- lexer_ (nc ctx_ 1) cs_
+          addOpToken tokCon = do
+            (ctx', tokens) <- lex_ (nc ctx_ 1) restChars_
             return (ctx', tokCon (i, i + 1) : tokens)

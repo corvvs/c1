@@ -21,15 +21,19 @@ solve :: T.Text -> IO ()
 solve expression = do -- IOコンテキスト
   result <- runExceptT $ do -- ExceptT(ExceptTT)コンテキスト
 
-    tokens <- lexer expression
+    -- 入力文字列からトークン列を生成
+    tokens <- lexEquation expression
     liftIO $ MyPrint.printLine "Tokens" $ T.pack $ show tokens
 
+    -- トークン列から方程式ASTを生成
     equation <- parseEquation expression tokens
     liftIO $ MyPrint.printLine "Equation AST" $ T.pack $ show equation
 
+    -- 方程式ASTを多項式構造体に変換
     lhs <- reduceEquation equation
     liftIO $ MyPrint.printLine "Reduced form" $ T.concat [printPolynomial lhs, T.pack " = 0"]
 
+    -- 多項式構造体をもとに方程式の解を求める
     result <- solveEquation lhs
     liftIO $ result
 

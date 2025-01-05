@@ -1,8 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module PolynomialBase(PolynomialVariable, PolynomialTerm (..), Polynomial, zeroTerm, polynomialTermByNum, polynomialTermByVar, zeroPolynomial, unitPolynomial, getTerm, getCoeffOfTerm, dimensionOfPolynomial, minDemensionOfPolynomial, dimensionOfTerm) where
+module PolynomialBase(PolynomialVariable, PolynomialTerm (..), Polynomial, zeroPolynomial, unitPolynomial, getTerm, getCoeffOfTerm, dimensionOfPolynomial, minDemensionOfPolynomial, dimensionOfTerm) where
 
-import AST (AST (..))
 import qualified Data.List as List
 import qualified Data.Map as Map
 import TypeClass (Addable (..), Multipliable (..), Subtractable (..), Divisible (..))
@@ -19,16 +18,6 @@ zeroTerm = PolynomialTerm 0 Map.empty
 
 -- unitTerm :: PolynomialTerm
 -- unitTerm = PolynomialTerm 1 Map.empty
-
--- 項のコンストラクタ by Num
-polynomialTermByNum :: AST -> PolynomialTerm
-polynomialTermByNum (Num a) = PolynomialTerm a Map.empty
-polynomialTermByNum _ = error "Not a Num"
-
--- 項のコンストラクタ by Var
-polynomialTermByVar :: AST -> PolynomialTerm
-polynomialTermByVar (Var n e) = PolynomialTerm 1 (Map.singleton n e)
-polynomialTermByVar _ = error "Not a Var"
 
 -- 多項式
 type Polynomial = Map.Map T.Text PolynomialTerm
