@@ -11,7 +11,7 @@ GHC - stackの環境があればそのままビルドできるが、Dockerコン
 ```
 $ make up # コンテナをビルド
 $ make it # コンテナ内に入る
-# make install # 初回のみ必要かもしれない
+# make setup # 初回のみ必要かもしれない
 # make # コンテナ内で実行ファイルをビルド
 ```
 
