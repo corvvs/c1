@@ -5,6 +5,7 @@ import AST (AST (..))
 import qualified Data.List as List
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import Data.Bits ((.&.))
 import qualified Data.Set as Set
 import Parser (Equation (Equation))
 import Exception
@@ -197,15 +198,19 @@ reduceToPolynomial (Pow a b) = do
       isNonNegativeInteger :: Double -> Bool
       isNonNegativeInteger n = n >= 0 && n == fromIntegral (round n :: Integer)
 
+      -- 多項式の冪乗の計算
       powPolynomial :: Polynomial -> Double -> ExceptTT Polynomial
-      powPolynomial p n = if isNonNegativeInteger n
-          then return $ powPolynomial' unitPolynomial p (round n)
-          else sayError $ T.pack "Not supported"
+      powPolynomial p n = do
+          when (not (isNonNegativeInteger n)) $
+            sayError $ T.pack "Not supported"
+          return $ powPolynomial' p (round n) unitPolynomial 1 p
 
-      powPolynomial' :: Polynomial -> Polynomial -> Int -> Polynomial
-      powPolynomial' p q n
-        | n <= 0 = p
-        | otherwise = powPolynomial' (mulPolynomials p q) q (n - 1)
+      powPolynomial' :: Polynomial -> Int -> Polynomial -> Int -> Polynomial -> Polynomial
+      powPolynomial' base n ans bit binary_a
+        | bit > n = ans
+        | (n .&. bit) == 0 = powPolynomial' base n ans (bit * 2) (mulPolynomials binary_a binary_a)
+        | otherwise = powPolynomial' base n (mulPolynomials ans binary_a) (bit * 2) (mulPolynomials binary_a binary_a)
+
 
 data PolynomialInfo = PolynomialInfo {
   varSet :: Set.Set T.Text,

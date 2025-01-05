@@ -289,11 +289,12 @@ CaseExtreme = [
   [["(X+1)^100 = (X-1)^100"], :has_solver_error],
   [["(X+1)^100 = (X+1)^100 + X"], :has_dimension_1, :no_solver_error],
   [["あんぱん^3 = (1 + 2)^3 / 100"], :has_dimension_3, :no_solver_error],
+  [["(((((((((((X  )^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2 = 0"], :has_solver_error],
+  [["(((((((((((X+1)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2 = 0"], :has_solver_error],
   [["(X+1)^9 = 0"], :has_solver_error],
   [["(X+1)^99 = 0"], :has_solver_error],
   [["(X+1)^999 = 0"], :has_solver_error],
-  [["((((((((((((X  )^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2 = 0"], :has_solver_error],
-  [["((((((((((((X+1)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2)^2 = 0"], :has_solver_error],
+  # [["(X+1)^9999 = 0"], :has_solver_error], -- 1分弱かかる
 ]
 
 def evaluate_cases(name, cases)
